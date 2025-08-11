@@ -1,0 +1,31 @@
+import { NextResponse } from "next/server";
+
+export async function POST(request: Request) {
+  const { token, maxAge = 3600 } = await request.json();
+
+  if (!token || typeof token !== "string") {
+    return NextResponse.json({ ok: false, error: "token requerido" }, { status: 400 });
+  }
+
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set("auth_token", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge,
+  });
+  return res;
+}
+
+export async function DELETE() {
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set("auth_token", "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
+  return res;
+}
