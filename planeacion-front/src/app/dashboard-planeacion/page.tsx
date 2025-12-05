@@ -7,11 +7,22 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { LogOut, University, User2 } from "lucide-react";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_BASE = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+).replace(/\/$/, "");
+
+// Server Action logout (mejor declararla fuera del componente)
+export async function logoutAction() {
+  "use server";
+  const store = await cookies();
+  store.delete("auth_token");
+  redirect("/");
+}
 
 export default async function DashboardPlaneacionPage() {
   // --- protección por cookie ---
-  const token = cookies().get("auth_token")?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth_token")?.value;
   if (!token) redirect("/?reason=auth");
 
   // /me (con token)
@@ -19,24 +30,27 @@ export default async function DashboardPlaneacionPage() {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
-  if (!meRes.ok) redirect("/?reason=auth");
+
+  if (!meRes.ok) {
+    redirect("/?reason=auth");
+  }
+
   const user = await meRes.json();
 
   // Unidad académica
-  let unidad: { id: number; nombre: string; abreviatura?: string | null } | null = null;
+  let unidad:
+    | { id: number; nombre: string; abreviatura?: string | null }
+    | null = null;
+
   try {
-    const uaRes = await fetch(`${API_BASE}/unidades/${user.unidad_id}`, { cache: "no-store" });
-    if (uaRes.ok) unidad = await uaRes.json();
+    const uaRes = await fetch(`${API_BASE}/unidades/${user.unidad_id}`, {
+      cache: "no-store",
+    });
+    if (uaRes.ok) {
+      unidad = await uaRes.json();
+    }
   } catch {
     unidad = null;
-  }
-
-  // Server Action logout
-  async function logoutAction() {
-    "use server";
-    const store = cookies();
-    store.delete("auth_token");
-    redirect("/");
   }
 
   // Iniciales del avatar
@@ -52,12 +66,11 @@ export default async function DashboardPlaneacionPage() {
       : "US";
 
   // Texto completo de la UA
-  const unidadTexto =
-    unidad?.nombre
-      ? unidad?.abreviatura
-        ? `${unidad.nombre} (${unidad.abreviatura})`
-        : unidad.nombre
-      : "Unidad Académica";
+  const unidadTexto = unidad?.nombre
+    ? unidad?.abreviatura
+      ? `${unidad.nombre} (${unidad.abreviatura})`
+      : unidad.nombre
+    : "Unidad Académica";
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -79,7 +92,9 @@ export default async function DashboardPlaneacionPage() {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border">
                 <Avatar className="h-6 w-6">
-                  <AvatarFallback className="text-[10px]">{iniciales}</AvatarFallback>
+                  <AvatarFallback className="text-[10px]">
+                    {iniciales}
+                  </AvatarFallback>
                 </Avatar>
                 <span className="flex items-center gap-1 text-sm font-medium">
                   <User2 className="h-4 w-4 text-muted-foreground" />
@@ -87,10 +102,18 @@ export default async function DashboardPlaneacionPage() {
                 </span>
               </div>
 
-              <Separator orientation="vertical" className="h-6 hidden sm:block" />
+              <Separator
+                orientation="vertical"
+                className="h-6 hidden sm:block"
+              />
 
               <form action={logoutAction}>
-                <Button type="submit" variant="outline" size="sm" className="gap-2">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
                   <LogOut className="h-4 w-4" />
                   Cerrar sesión
                 </Button>
@@ -102,7 +125,9 @@ export default async function DashboardPlaneacionPage() {
           <div className="rounded-md border bg-muted/60 px-3 py-2 text-sm">
             <div className="flex items-start gap-2">
               <University className="h-4 w-4 mt-0.5 shrink-0" />
-              <div className="whitespace-pre-wrap break-words">{unidadTexto}</div>
+              <div className="whitespace-pre-wrap break-words">
+                {unidadTexto}
+              </div>
             </div>
           </div>
         </div>

@@ -56,8 +56,14 @@ function AyudaEje({
   );
 }
 
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
+
 export default function RelacionesEjes() {
-  const { register } = useFormContext<PlaneacionType>();
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<PlaneacionType>();
 
   return (
     <section className="space-y-6">
@@ -66,59 +72,66 @@ export default function RelacionesEjes() {
       </h2>
 
       {/* 2.1 Relación con otras UAs */}
-            <div className="grid md:grid-cols-3 gap-4">
-            <div>
-                <div className="flex items-center justify-between">
-                <Label>Antecedentes</Label>
-                <AyudaEje
-                    titulo="Antecedentes"
-                    quePoner="Lista de unidades de aprendizaje que los estudiantes deben haber cursado antes, y que aportan conocimientos necesarios para esta materia."
-                    checklist={[
-                    "Nombrar unidades previas exactas (según plan de estudios).",
-                    "Usar nombres oficiales, separados por comas.",
-                    "Incluir solo las indispensables para el entendimiento inicial.",
-                    ]}
-                    ejemplo="Álgebra, Cálculo Diferencial, Fundamentos de Programación."
-                />
-                </div>
-                <Input placeholder="Cálculo I, Álgebra" {...register("antecedentes")} />
-            </div>
+      <div className="grid md:grid-cols-3 gap-4">
+        <div>
+          <div className="flex items-center justify-between">
+            <Label>Antecedentes</Label>
+            <AyudaEje
+              titulo="Antecedentes"
+              quePoner="Lista de unidades de aprendizaje que los estudiantes deben haber cursado antes, y que aportan conocimientos necesarios para esta materia."
+              checklist={[
+                "Nombrar unidades previas exactas (según plan de estudios).",
+                "Usar nombres oficiales, separados por comas.",
+                "Incluir solo las indispensables para el entendimiento inicial.",
+              ]}
+              ejemplo="Álgebra, Cálculo Diferencial, Fundamentos de Programación."
+            />
+          </div>
+          <Input
+            placeholder="Cálculo I, Álgebra"
+            {...register("antecedentes")}
+          />
+          <FieldError msg={errors.antecedentes?.message as string | undefined} />
+        </div>
 
-            <div>
-                <div className="flex items-center justify-between">
-                <Label>Laterales</Label>
-                <AyudaEje
-                    titulo="Laterales"
-                    quePoner="Unidades de aprendizaje que se cursan de forma paralela y complementan contenidos de la materia."
-                    checklist={[
-                    "Indicar asignaturas que comparten temario o refuerzan contenidos.",
-                    "Deben ser cursadas en el mismo semestre o nivel.",
-                    "Usar nombres oficiales del plan de estudios.",
-                    ]}
-                    ejemplo="Física I, Taller de Comunicación Oral y Escrita."
-                />
-                </div>
-                <Input placeholder="Física I" {...register("laterales")} />
-            </div>
+        <div>
+          <div className="flex items-center justify-between">
+            <Label>Laterales</Label>
+            <AyudaEje
+              titulo="Laterales"
+              quePoner="Unidades de aprendizaje que se cursan de forma paralela y complementan contenidos de la materia."
+              checklist={[
+                "Indicar asignaturas que comparten temario o refuerzan contenidos.",
+                "Deben ser cursadas en el mismo semestre o nivel.",
+                "Usar nombres oficiales del plan de estudios.",
+              ]}
+              ejemplo="Física I, Taller de Comunicación Oral y Escrita."
+            />
+          </div>
+          <Input placeholder="Física I" {...register("laterales")} />
+          <FieldError msg={errors.laterales?.message as string | undefined} />
+        </div>
 
-            <div>
-                <div className="flex items-center justify-between">
-                <Label>Subsecuentes</Label>
-                <AyudaEje
-                    titulo="Subsecuentes"
-                    quePoner="Unidades de aprendizaje que dependen directamente de los conocimientos y competencias adquiridas en esta materia."
-                    checklist={[
-                    "Nombrar asignaturas que requieren esta materia como base.",
-                    "Usar nombres oficiales del plan de estudios.",
-                    "Considerar las que continúan la línea de formación.",
-                    ]}
-                    ejemplo="Cálculo III, Mecánica de Materiales."
-                />
-                </div>
-                <Input placeholder="Cálculo III" {...register("subsecuentes")} />
-            </div>
-            </div>
-
+        <div>
+          <div className="flex items-center justify-between">
+            <Label>Subsecuentes</Label>
+            <AyudaEje
+              titulo="Subsecuentes"
+              quePoner="Unidades de aprendizaje que dependen directamente de los conocimientos y competencias adquiridas en esta materia."
+              checklist={[
+                "Nombrar asignaturas que requieren esta materia como base.",
+                "Usar nombres oficiales del plan de estudios.",
+                "Considerar las que continúan la línea de formación.",
+              ]}
+              ejemplo="Cálculo III, Mecánica de Materiales."
+            />
+          </div>
+          <Input placeholder="Cálculo III" {...register("subsecuentes")} />
+          <FieldError
+            msg={errors.subsecuentes?.message as string | undefined}
+          />
+        </div>
+      </div>
 
       {/* 2.2 Ejes transversales con ayuda contextual (HoverCard) */}
       <div className="grid md:grid-cols-3 gap-6">
@@ -131,7 +144,7 @@ export default function RelacionesEjes() {
               quePoner="Acciones concretas dentro del curso que promuevan responsabilidad social y uso sostenible de recursos; describe qué harán docente y estudiantes, con productos y forma de evaluación."
               checklist={[
                 "Actividad/proyecto con impacto social/ambiental claro.",
-                "Uso eficiente de recursos/materiales; prácticas de reducción/resuso.",
+                "Uso eficiente de recursos/materiales; prácticas de reducción/reuso.",
                 "Vinculación con comunidad/sector (si aplica) y resultados esperados.",
                 "Evidencias solicitadas (reporte, bitácora, prototipo, campaña).",
                 "Criterios/instrumentos de evaluación (rúbrica, lista de cotejo).",
@@ -144,12 +157,20 @@ export default function RelacionesEjes() {
             placeholder="Describe las actividades, evidencias y criterios de evaluación orientados a impacto social/ambiental…"
             {...register("ejes.compromiso_social_sustentabilidad")}
           />
+          <FieldError
+            msg={
+              (errors.ejes as any)?.compromiso_social_sustentabilidad
+                ?.message as string | undefined
+            }
+          />
         </div>
 
         {/* 2.2.2 Perspectiva, inclusión y erradicación de la violencia de género */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Perspectiva, inclusión y erradicación de la violencia de género</Label>
+            <Label>
+              Perspectiva, inclusión y erradicación de la violencia de género
+            </Label>
             <AyudaEje
               titulo="Perspectiva de género e inclusión"
               quePoner="Medidas y dinámicas para garantizar igualdad sustantiva, participación equitativa, lenguaje inclusivo y cultura de paz; explica cómo se implementa y cómo se verifica."
@@ -167,6 +188,12 @@ export default function RelacionesEjes() {
             rows={5}
             placeholder="Detalla reglas de convivencia, estrategias de participación, materiales inclusivos y mecanismos de atención…"
             {...register("ejes.perspectiva_genero")}
+          />
+          <FieldError
+            msg={
+              (errors.ejes as any)?.perspectiva_genero
+                ?.message as string | undefined
+            }
           />
         </div>
 
@@ -191,6 +218,12 @@ export default function RelacionesEjes() {
             rows={5}
             placeholder="Expón estándares, comparativas, colaboraciones externas y evidencias de logro intercultural…"
             {...register("ejes.internacionalizacion")}
+          />
+          <FieldError
+            msg={
+              (errors.ejes as any)?.internacionalizacion
+                ?.message as string | undefined
+            }
           />
         </div>
       </div>

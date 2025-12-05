@@ -8,6 +8,7 @@ import { PlaneacionType } from "../schema";
 import UnidadTematica from "./UnidadTematica";
 import { toast } from "sonner";
 
+// ---- Construye paths mínimos para validar una Unidad Temática ----
 const buildMinimalPathsForUnit = (idx: number) => {
   const base = `unidades_tematicas.${idx}`;
   const paths: string[] = [
@@ -24,6 +25,7 @@ const buildMinimalPathsForUnit = (idx: number) => {
     `${base}.sesiones_totales`,
     `${base}.aprendizajes_esperados`,
   ];
+
   const bloqueKeys = [
     "numero_sesion",
     "temas_subtemas",
@@ -35,48 +37,73 @@ const buildMinimalPathsForUnit = (idx: number) => {
     "evidencias",
     "instrumentos",
   ];
+
   return { base, paths, bloqueKeys };
 };
 
 export default function OrganizacionDidactica() {
-  const { control, register, trigger, getValues } = useFormContext<PlaneacionType>();
+  const { control, register, trigger, getValues } =
+    useFormContext<PlaneacionType>();
 
-  const unidadesFA = useFieldArray({ control, name: "unidades_tematicas" as const });
-  const unidades = useWatch({ control, name: "unidades_tematicas" as const }) as any[] | undefined;
+  // FieldArray para UTs
+  const unidadesFA = useFieldArray({
+    control,
+    name: "unidades_tematicas",
+  });
 
+  // Watch (reactivo para cálculo de totales)
+  const unidades = useWatch({
+    control,
+    name: "unidades_tematicas",
+  }) as any[] | undefined;
+
+  // ---- Cálculo global de horas y sesiones ----
   const { totalHorasGlobal, totalSesionesGlobal } = useMemo(() => {
-    let horas = 0;
-    let sesiones = 0;
+    let totalH = 0;
+    let totalS = 0;
+
     for (const ut of unidades || []) {
       const h = ut?.horas || {};
-      horas += Number(h.aula || 0) + Number(h.laboratorio || 0) + Number(h.taller || 0) + Number(h.clinica || 0) + Number(h.otro || 0);
-      sesiones += Number(ut?.sesiones_totales || 0);
+      totalH +=
+        Number(h.aula || 0) +
+        Number(h.laboratorio || 0) +
+        Number(h.taller || 0) +
+        Number(h.clinica || 0) +
+        Number(h.otro || 0);
+
+      totalS += Number(ut?.sesiones_totales || 0);
     }
-    return { totalHorasGlobal: horas, totalSesionesGlobal: sesiones };
+    return { totalHorasGlobal: totalH, totalSesionesGlobal: totalS };
   }, [unidades]);
 
+  // -----------------------------------------------------------------
+  // Render principal
+  // -----------------------------------------------------------------
   return (
     <div className="space-y-4">
-      {/* Encabezado */}
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-lg font-semibold">3. Organización didáctica</h2>
           <p className="text-sm text-muted-foreground">
-            Total sesiones: {totalSesionesGlobal} | Total horas: {totalHorasGlobal}
+            Total sesiones: {totalSesionesGlobal} | Total horas:{" "}
+            {totalHorasGlobal}
           </p>
         </div>
+
+        {/* Sesiones por semestre */}
         <div className="flex items-center gap-2">
           <Label className="text-sm">Sesiones por semestre:</Label>
           <input
             className="border rounded-md px-2 py-1 text-sm"
             type="number"
             min={0}
-            {...register("sesiones_por_semestre" as any, { valueAsNumber: true })}
+            {...register("sesiones_por_semestre", { valueAsNumber: true })}
           />
         </div>
       </div>
 
-      {/* Lista de UT */}
+      {/* Lista de Unidades Temáticas */}
       <div className="space-y-6">
         {unidadesFA.fields.map((f, i) => (
           <UnidadTematica
@@ -95,43 +122,84 @@ export default function OrganizacionDidactica() {
           type="button"
           variant="outline"
           onClick={async () => {
+            const values = getValues();
+
+            // Validar todas las UT antes de agregar una nueva
             if (unidadesFA.fields.length > 0) {
-              const values = getValues();
               let paths: string[] = [];
+
               unidadesFA.fields.forEach((_, idx) => {
-                const { base, paths: basePaths, bloqueKeys } = buildMinimalPathsForUnit(idx);
+                const { base, paths: basePaths, bloqueKeys } =
+                  buildMinimalPathsForUnit(idx);
+
                 paths = paths.concat(basePaths);
-                const bloques = (values?.unidades_tematicas?.[idx]?.bloques || []) as any[];
+
+                const bloques =
+                  (values.unidades_tematicas?.[idx]?.bloques || []) as any[];
+
                 bloques.forEach((_, j) => {
-                  bloqueKeys.forEach((k) => paths.push(`${base}.bloques.${j}.${k}`));
+                  bloqueKeys.forEach((k) =>
+                    paths.push(`${base}.bloques.${j}.${k}`)
+                  );
                 });
               });
 
-              const ok = await trigger(paths as any, { shouldFocus: true });
+              const ok = await trigger(paths as any, {
+                shouldFocus: true,
+              });
+
               if (!ok) {
-                toast.error("Completa las unidades temáticas actuales antes de agregar otra.");
+                toast.error(
+                  "Completa correctamente las unidades temáticas antes de agregar otra."
+                );
                 return;
               }
 
-              const excede = (values?.unidades_tematicas || []).some((ut: any) => {
-                const suma = (ut?.bloques || []).reduce((acc: number, b: any) => acc + Number(b?.valor_porcentual || 0), 0);
-                return suma > 100;
-              });
+              // Validar % de bloques
+              const excede = (values.unidades_tematicas || []).some(
+                (ut: any) => {
+                  const suma = (ut?.bloques || []).reduce(
+                    (acc: number, b: any) =>
+                      acc + Number(b?.valor_porcentual || 0),
+                    0
+                  );
+                  return suma > 100;
+                }
+              );
               if (excede) {
-                toast.error("Alguna unidad supera el 100% en Valor (%).");
+                toast.error(
+                  "Alguna unidad supera el 100% del valor porcentual total."
+                );
                 return;
               }
             }
 
+            // Crear nueva UT
             unidadesFA.append({
               numero: unidadesFA.fields.length + 1,
               nombre_unidad_tematica: "",
               unidad_competencia: "",
               periodo_desarrollo: { del: "", al: "" },
-              horas: { aula: 0, laboratorio: 0, taller: 0, clinica: 0, otro: 0 },
+              horas: {
+                aula: 0,
+                laboratorio: 0,
+                taller: 0,
+                clinica: 0,
+                otro: 0,
+              },
               sesiones_totales: 0,
-              aprendizajes_esperados: [],
-              bloques: [],
+              aprendizajes_esperados: [""],
+              bloques: [
+                {
+                  numero_sesion: 1,
+                  temas_subtemas: "",
+                  actividades: { inicio: "", desarrollo: "", cierre: "" },
+                  recursos: [""],
+                  evidencias: [""],
+                  valor_porcentual: 0,
+                  instrumentos: [""],
+                },
+              ],
               precisiones: "",
             });
           }}

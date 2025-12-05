@@ -5,25 +5,45 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogHeader, DialogDescription,
-  DialogTitle, DialogFooter, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogDescription,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  LogIn, Mail, Lock, UserPlus, KeyRound, Loader2,
+  LogIn,
+  Mail,
+  Lock,
+  UserPlus,
+  KeyRound,
+  Loader2,
 } from "lucide-react";
 import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
 // ====== ENV / URLS ======
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
-const DASHBOARD_PATH = process.env.NEXT_PUBLIC_DASHBOARD_PATH || "/dashboard-planeacion";
+// Por defecto: backend Go en http://localhost:8080/api
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api").replace(/\/$/, "");
+const DASHBOARD_PATH =
+  process.env.NEXT_PUBLIC_DASHBOARD_PATH || "/dashboard-planeacion";
 
 const URLS = {
   unidades: `${API_BASE}/unidades`,
@@ -71,31 +91,59 @@ export default function Home() {
     : undefined;
 
   async function safeJson(res: Response) {
-    try { return await res.json(); } catch { return null; }
+    try {
+      return await res.json();
+    } catch {
+      return null;
+    }
   }
 
   // Cargar unidades al abrir modal de registro
   useEffect(() => {
     let ignore = false;
+
     async function loadUnits() {
       try {
         setUnitsError(null);
         setUnitsLoading(true);
+
         const res = await fetch(URLS.unidades, { cache: "no-store" });
+
         if (!res.ok) {
           const maybeJSON = await safeJson(res);
-          throw new Error(maybeJSON?.detail || "No se pudo cargar el catálogo");
+          const msg =
+            maybeJSON?.error ||
+            maybeJSON?.msg ||
+            maybeJSON?.detail ||
+            "No se pudo cargar el catálogo de unidades";
+          throw new Error(msg);
         }
-        const data: Unidad[] = await res.json();
-        if (!ignore) setUnits(data);
+
+        const payload = await res.json();
+
+        // Backend Go devuelve { items: Unidad[], total }
+        const items: Unidad[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.items)
+          ? payload.items
+          : [];
+
+        if (!ignore) setUnits(items);
       } catch (err: any) {
-        if (!ignore) setUnitsError(err?.message ?? "Error cargando unidades");
+        if (!ignore)
+          setUnitsError(
+            err?.message ?? "Error cargando unidades académicas"
+          );
       } finally {
         if (!ignore) setUnitsLoading(false);
       }
     }
+
     if (openRegister && units.length === 0 && !unitsLoading) loadUnits();
-    return () => { ignore = true; };
+
+    return () => {
+      ignore = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRegister]);
 
@@ -118,14 +166,22 @@ export default function Home() {
       if (!res.ok) {
         const data = await safeJson(res);
         const msg =
-          (data?.detail && (Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail)) ||
-          (res.status === 401 ? "Credenciales inválidas" : `No se pudo iniciar sesión (${res.status})`);
+          data?.error ||
+          data?.msg ||
+          (data?.detail &&
+            (Array.isArray(data.detail)
+              ? data.detail[0]?.msg
+              : data.detail)) ||
+          (res.status === 401
+            ? "Credenciales inválidas"
+            : `No se pudo iniciar sesión (${res.status})`);
         throw new Error(msg);
       }
 
       const data = await res.json();
       const token = data.access_token || data.token || data?.accessToken;
-      if (!token) throw new Error("Respuesta de autenticación inválida (sin token).");
+      if (!token)
+        throw new Error("Respuesta de autenticación inválida (sin token).");
 
       // Guarda cookie HttpOnly en Next (no accesible desde JS)
       const ses = await fetch("/api/session", {
@@ -136,7 +192,8 @@ export default function Home() {
       if (!ses.ok) throw new Error("No se pudo establecer la sesión.");
 
       // (Opcional) guarda user en localStorage para UI
-      if (data.user) localStorage.setItem("auth_user", JSON.stringify(data.user));
+      if (data.user)
+        localStorage.setItem("auth_user", JSON.stringify(data.user));
 
       toast.success("¡Bienvenido! Redirigiendo al panel…");
 
@@ -157,13 +214,16 @@ export default function Home() {
     setRegError(null);
 
     if (regEmail.trim().toLowerCase() !== regEmail2.trim().toLowerCase()) {
-      setRegError("Los correos no coinciden"); return;
+      setRegError("Los correos no coinciden");
+      return;
     }
     if (regPass !== regPass2) {
-      setRegError("Las contraseñas no coinciden"); return;
+      setRegError("Las contraseñas no coinciden");
+      return;
     }
     if (!selectedUnitId) {
-      setRegError("Selecciona una unidad académica"); return;
+      setRegError("Selecciona una unidad académica");
+      return;
     }
 
     setRegistering(true);
@@ -174,9 +234,7 @@ export default function Home() {
         body: JSON.stringify({
           nombre: regName.trim(),
           email: regEmail.trim(),
-          email2: regEmail2.trim(),
           password: regPass,
-          password2: regPass2,
           unidad_id: Number(selectedUnitId),
         }),
       });
@@ -184,15 +242,24 @@ export default function Home() {
       if (!res.ok) {
         const data = await safeJson(res);
         const msg =
-          (data?.detail && (Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail)) ||
+          data?.error ||
+          data?.msg ||
+          (data?.detail &&
+            (Array.isArray(data.detail)
+              ? data.detail[0]?.msg
+              : data.detail)) ||
           `No se pudo crear la cuenta (${res.status})`;
         throw new Error(msg);
       }
 
       toast.success("Cuenta creada correctamente. Ya puedes iniciar sesión.");
       setOpenRegister(false);
-      setRegName(""); setRegEmail(""); setRegEmail2("");
-      setRegPass(""); setRegPass2(""); setSelectedUnitId("");
+      setRegName("");
+      setRegEmail("");
+      setRegEmail2("");
+      setRegPass("");
+      setRegPass2("");
+      setSelectedUnitId("");
       setRegError(null);
     } catch (err: any) {
       setRegError(err?.message ?? "Error al registrar usuario");
@@ -215,11 +282,21 @@ export default function Home() {
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#que-es" className="hover:text-foreground">¿Qué es?</a>
-            <a href="#beneficios" className="hover:text-foreground">Beneficios</a>
-            <a href="#caracteristicas" className="hover:text-foreground">Características</a>
-            <a href="#faqs" className="hover:text-foreground">FAQ</a>
-            <a href="#contacto" className="hover:text-foreground">Contacto</a>
+            <a href="#que-es" className="hover:text-foreground">
+              ¿Qué es?
+            </a>
+            <a href="#beneficios" className="hover:text-foreground">
+              Beneficios
+            </a>
+            <a href="#caracteristicas" className="hover:text-foreground">
+              Características
+            </a>
+            <a href="#faqs" className="hover:text-foreground">
+              FAQ
+            </a>
+            <a href="#contacto" className="hover:text-foreground">
+              Contacto
+            </a>
           </nav>
         </div>
       </header>
@@ -232,11 +309,13 @@ export default function Home() {
               Versión preliminar
             </p>
             <h1 className="text-3xl md:text-5xl font-bold leading-tight">
-              Planeación didáctica centralizada y alineada al modelo institucional
+              Planeación didáctica centralizada y alineada al modelo
+              institucional
             </h1>
             <p className="mt-4 text-muted-foreground max-w-prose">
-              Diseña, organiza y da seguimiento a planeaciones con los cinco apartados del instructivo:
-              datos generales, orientación, unidades temáticas, evaluación y bibliografía.
+              Diseña, organiza y da seguimiento a planeaciones con los cinco
+              apartados del instructivo: datos generales, orientación, unidades
+              temáticas, evaluación y bibliografía.
             </p>
 
             {/* BOTÓN ÚNICO: INICIAR → abre Sheet con LOGIN */}
@@ -258,29 +337,51 @@ export default function Home() {
                     </SheetHeader>
 
                     <div className="mt-6 flex-1">
-                      <form onSubmit={handleLoginSubmit} className="mx-auto w-full max-w-sm space-y-6">
+                      <form
+                        onSubmit={handleLoginSubmit}
+                        className="mx-auto w-full max-w-sm space-y-6"
+                      >
                         {/* Email */}
                         <div className="space-y-2">
-                          <Label htmlFor="login-email" className="text-sm">Correo</Label>
+                          <Label htmlFor="login-email" className="text-sm">
+                            Correo
+                          </Label>
                           <div className="relative">
                             <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                              id="login-email" type="email" placeholder="tucorreo@ipn.mx" autoComplete="email"
-                              value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)}
-                              required autoFocus className="pl-9"
+                              id="login-email"
+                              type="email"
+                              placeholder="tucorreo@ipn.mx"
+                              autoComplete="email"
+                              value={loginEmail}
+                              onChange={(e) =>
+                                setLoginEmail(e.target.value)
+                              }
+                              required
+                              autoFocus
+                              className="pl-9"
                             />
                           </div>
                         </div>
 
                         {/* Password */}
                         <div className="space-y-2">
-                          <Label htmlFor="login-password" className="text-sm">Contraseña</Label>
+                          <Label htmlFor="login-password" className="text-sm">
+                            Contraseña
+                          </Label>
                           <div className="relative">
                             <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                              id="login-password" type="password" placeholder="••••••••" autoComplete="current-password"
-                              value={loginPass} onChange={(e) => setLoginPass(e.target.value)}
-                              required className="pl-9"
+                              id="login-password"
+                              type="password"
+                              placeholder="••••••••"
+                              autoComplete="current-password"
+                              value={loginPass}
+                              onChange={(e) =>
+                                setLoginPass(e.target.value)
+                              }
+                              required
+                              className="pl-9"
                             />
                           </div>
                         </div>
@@ -293,8 +394,19 @@ export default function Home() {
                         )}
 
                         {/* Submit */}
-                        <Button type="submit" className="w-full h-11" disabled={loggingIn}>
-                          {loggingIn ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Iniciando...</>) : ("Entrar")}
+                        <Button
+                          type="submit"
+                          className="w-full h-11"
+                          disabled={loggingIn}
+                        >
+                          {loggingIn ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Iniciando...
+                            </>
+                          ) : (
+                            "Entrar"
+                          )}
                         </Button>
 
                         {/* Acciones secundarias */}
@@ -313,7 +425,6 @@ export default function Home() {
                             onOpenChange={(v) => {
                               setOpenRegister(v);
                               setRegError(null);
-                              // opcional: limpiar errores de login al abrir registro
                               setLoginError(null);
                             }}
                           >
@@ -339,21 +450,38 @@ export default function Home() {
                                 </DialogDescription>
                               </DialogHeader>
 
-                              <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                              <form
+                                onSubmit={handleRegisterSubmit}
+                                className="space-y-4"
+                              >
                                 {/* Unidad académica */}
                                 <div className="space-y-2 min-w-0">
                                   <Select
                                     value={selectedUnitId}
-                                    onValueChange={(v) => setSelectedUnitId(v)}
-                                    disabled={unitsLoading || !!unitsError}
+                                    onValueChange={(v) =>
+                                      setSelectedUnitId(v)
+                                    }
+                                    disabled={
+                                      unitsLoading || !!unitsError
+                                    }
                                   >
                                     <SelectTrigger
                                       className="w-full max-w-full min-w-0 items-start h-auto py-2 pr-8"
-                                      title={selectedUnit ? displayUnitLabel(selectedUnit) : undefined}
+                                      title={
+                                        selectedUnit
+                                          ? displayUnitLabel(
+                                              selectedUnit
+                                            )
+                                          : undefined
+                                      }
                                     >
                                       <div className="flex-1 min-w-0">
                                         <SelectValue
-                                          placeholder={unitsLoading ? "Cargando..." : "Selecciona una unidad académica"}
+                                          placeholder={
+                                            unitsLoading
+                                              ? "Cargando..."
+                                              : "Selecciona una unidad académica"
+                                          }
                                           className="whitespace-normal break-words line-clamp-2"
                                         />
                                       </div>
@@ -374,10 +502,13 @@ export default function Home() {
                                     </SelectContent>
                                   </Select>
                                   {unitsError && (
-                                    <p className="text-xs text-destructive">{unitsError}</p>
+                                    <p className="text-xs text-destructive">
+                                      {unitsError}
+                                    </p>
                                   )}
                                 </div>
 
+                                {/* Nombre */}
                                 <div className="space-y-2">
                                   <Input
                                     id="reg-name"
@@ -385,7 +516,9 @@ export default function Home() {
                                     placeholder="Nombre y apellidos"
                                     autoComplete="name"
                                     value={regName}
-                                    onChange={(e) => setRegName(e.target.value)}
+                                    onChange={(e) =>
+                                      setRegName(e.target.value)
+                                    }
                                     required
                                   />
                                 </div>
@@ -393,27 +526,35 @@ export default function Home() {
                                 {/* Email + Confirmación */}
                                 <div className="grid gap-4 sm:grid-cols-2">
                                   <div className="space-y-2">
-                                    <Label htmlFor="reg-email">Correo institucional</Label>
+                                    <Label htmlFor="reg-email">
+                                      Correo institucional
+                                    </Label>
                                     <Input
                                       id="reg-email"
                                       type="email"
                                       placeholder="tucorreo@ipn.mx"
                                       autoComplete="email"
                                       value={regEmail}
-                                      onChange={(e) => setRegEmail(e.target.value)}
+                                      onChange={(e) =>
+                                        setRegEmail(e.target.value)
+                                      }
                                       required
                                     />
                                   </div>
 
                                   <div className="space-y-2">
-                                    <Label htmlFor="reg-email2">Confirmar correo</Label>
+                                    <Label htmlFor="reg-email2">
+                                      Confirmar correo
+                                    </Label>
                                     <Input
                                       id="reg-email2"
                                       type="email"
                                       placeholder="Repite el correo"
                                       autoComplete="email"
                                       value={regEmail2}
-                                      onChange={(e) => setRegEmail2(e.target.value)}
+                                      onChange={(e) =>
+                                        setRegEmail2(e.target.value)
+                                      }
                                       required
                                     />
                                   </div>
@@ -422,26 +563,34 @@ export default function Home() {
                                 {/* Password + Confirmación */}
                                 <div className="grid gap-4 sm:grid-cols-2">
                                   <div className="space-y-2">
-                                    <Label htmlFor="reg-password">Contraseña</Label>
+                                    <Label htmlFor="reg-password">
+                                      Contraseña
+                                    </Label>
                                     <Input
                                       id="reg-password"
                                       type="password"
                                       placeholder="Mínimo 8 caracteres"
                                       autoComplete="new-password"
                                       value={regPass}
-                                      onChange={(e) => setRegPass(e.target.value)}
+                                      onChange={(e) =>
+                                        setRegPass(e.target.value)
+                                      }
                                       required
                                     />
                                   </div>
                                   <div className="space-y-2">
-                                    <Label htmlFor="reg-password2">Confirmar contraseña</Label>
+                                    <Label htmlFor="reg-password2">
+                                      Confirmar contraseña
+                                    </Label>
                                     <Input
                                       id="reg-password2"
                                       type="password"
                                       placeholder="Repite la contraseña"
                                       autoComplete="new-password"
                                       value={regPass2}
-                                      onChange={(e) => setRegPass2(e.target.value)}
+                                      onChange={(e) =>
+                                        setRegPass2(e.target.value)
+                                      }
                                       required
                                     />
                                   </div>
@@ -458,11 +607,16 @@ export default function Home() {
                                   <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => setOpenRegister(false)}
+                                    onClick={() =>
+                                      setOpenRegister(false)
+                                    }
                                   >
                                     Cancelar
                                   </Button>
-                                  <Button type="submit" disabled={registering}>
+                                  <Button
+                                    type="submit"
+                                    disabled={registering}
+                                  >
                                     {registering ? (
                                       <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
