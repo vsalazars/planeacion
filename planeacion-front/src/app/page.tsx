@@ -43,7 +43,8 @@ import { toast } from "sonner";
 // Por defecto: backend Go en http://localhost:8080/api
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api").replace(/\/$/, "");
 const DASHBOARD_PATH =
-  process.env.NEXT_PUBLIC_DASHBOARD_PATH || "/dashboard-planeacion";
+  process.env.NEXT_PUBLIC_DASHBOARD_PATH || "/planeaciones";
+
 
 const URLS = {
   unidades: `${API_BASE}/unidades`,
@@ -199,8 +200,16 @@ export default function Home() {
 
       // redirige a ?next=... si existe
       const params = new URLSearchParams(window.location.search);
-      const next = params.get("next") || DASHBOARD_PATH;
+      let next = params.get("next");
+
+      // Si next no existe o apunta al viejo dashboard, enviamos a /planeaciones
+      if (!next || next.startsWith("/dashboard-planeacion")) {
+        next = "/planeaciones";
+      }
+
       router.push(next);
+
+
     } catch (err: any) {
       setLoginError(err?.message ?? "Error al iniciar sesión");
     } finally {

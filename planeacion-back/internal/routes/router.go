@@ -10,9 +10,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/vsalazars/planeacion-back/internal/handlers"
+	"github.com/vsalazars/planeacion-back/internal/middleware"
 )
 
-// SetupRouter arma el router principal y cuelga los grupos de rutas.
 func SetupRouter(db *pgxpool.Pool) *gin.Engine {
 	r := gin.Default()
 
@@ -21,7 +21,9 @@ func SetupRouter(db *pgxpool.Pool) *gin.Engine {
 		log.Fatal("❌ Error configurando proxies:", err)
 	}
 
-	// 🔥 CORS para permitir llamadas desde Next.js (localhost:3000)
+	// ======================================
+	// CORS (Next.js 3000)
+	// ======================================
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"http://localhost:3000",
@@ -33,14 +35,13 @@ func SetupRouter(db *pgxpool.Pool) *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Rutas básicas de salud
+	// ======================================
+	// Healthcheck
+	// ======================================
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-		})
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// Probar conexión a la BD en tiempo de request
 	r.GET("/db-check", func(c *gin.Context) {
 		var now string
 		if err := db.QueryRow(c.Request.Context(), "SELECT now()::text").Scan(&now); err != nil {
@@ -50,20 +51,32 @@ func SetupRouter(db *pgxpool.Pool) *gin.Engine {
 			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
-			"ok":  true,
-			"now": now,
-		})
+		c.JSON(http.StatusOK, gin.H{"ok": true, "now": now})
 	})
 
+	// ==========================
 	// Grupo /api
+	// ==========================
 	api := r.Group("/api")
 
+	// ---- AUTENTICACIÓN PÚBLICA ----
 	authHandler := &handlers.AuthHandler{DB: db}
 	handlers.RegisterAuthRoutes(api, authHandler)
 
 	unidadesHandler := &handlers.UnidadesHandler{DB: db}
 	handlers.RegisterUnidadesRoutes(api, unidadesHandler)
+
+	// ==========================
+	// Grupo PROTEGIDO
+	// ==========================
+	protected := api.Group("/")
+	protected.Use(middleware.AuthMiddleware())
+
+	planeacionesHandler := &handlers.PlaneacionesHandler{DB: db}
+	handlers.RegisterPlaneacionesRoutes(protected, planeacionesHandler)
+
+	datosHandler := &handlers.DatosGeneralesHandler{DB: db}
+	handlers.RegisterDatosGeneralesRoutes(protected, datosHandler)
 
 	return r
 }
