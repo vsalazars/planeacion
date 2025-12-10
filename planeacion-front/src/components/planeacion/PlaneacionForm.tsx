@@ -35,6 +35,8 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+
 
 type Unidad = { id: number; nombre: string; abreviatura?: string | null };
 
@@ -65,6 +67,7 @@ const SECTION_LABELS: Record<SectionKey, string> = {
 };
 
 export default function PlaneacionForm({ token }: { token: string }) {
+  const router = useRouter();  // 👈 NUEVO
   const [activeTab, setActiveTab] = useState<TabKey>("datos");
   const [planeacionId, setPlaneacionId] = useState<number | null>(null);
   const [planeacionNombre, setPlaneacionNombre] =
@@ -198,7 +201,6 @@ export default function PlaneacionForm({ token }: { token: string }) {
             clinica: 0,
             otro: 0,
           },
-          // >>> nuevo: estructura explícita para sesiones por espacio
           sesiones_por_espacio: {
             aula: 0,
             laboratorio: 0,
@@ -239,6 +241,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
     reset,
     formState: { isSubmitting },
     trigger,
+    setValue,
   } = form;
 
   const ut = useFieldArray<PlaneacionType>({
@@ -258,10 +261,8 @@ export default function PlaneacionForm({ token }: { token: string }) {
 
   const unidadesCount = uts?.length ?? 0;
   const sumSesiones =
-    (uts || []).reduce(
-      (acc, u) => acc + (u?.sesiones_totales || 0),
-      0
-    ) || 0;
+    (uts || []).reduce((acc, u) => acc + (u?.sesiones_totales || 0), 0) ||
+    0;
   const sumHoras =
     (uts || []).reduce(
       (acc, u) =>
@@ -393,15 +394,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
     if (isEmpty(values.ejes?.internacionalizacion))
       prog.relaciones.missing.push("Internacionalización (2.6)");
 
-    // 3. ORGANIZACIÓN
-    const org: any = (values as any).organizacion || {};
-    if (isEmpty(org.proposito))
-      prog.organizacion.missing.push("Propósito de la unidad (3.1)");
-    if (isEmpty(org.estrategia))
-      prog.organizacion.missing.push("Estrategia didáctica (3.2)");
-    if (isEmpty(org.metodos))
-      prog.organizacion.missing.push("Métodos y técnicas (3.3)");
-
+    // 3. ORGANIZACIÓN (ya sin proposito/estrategia/metodos)
     (values.unidades_tematicas || []).forEach((u, idx) => {
       const n = idx + 1;
       if (isEmpty(u.nombre_unidad_tematica))
@@ -541,7 +534,6 @@ export default function PlaneacionForm({ token }: { token: string }) {
             estrategia: data.org_estrategia ?? "",
             metodos: data.org_metodos ?? "",
           },
-          // mapeo de referencias desde backend
           referencias: Array.isArray(data.referencias)
             ? data.referencias.map((r: any) => ({
                 cita_apa: r.cita_apa ?? "",
@@ -559,7 +551,6 @@ export default function PlaneacionForm({ token }: { token: string }) {
           },
         };
 
-        // >>> NUEVO: mapear unidades_tematicas desde el backend
         const rawUts: any[] = Array.isArray(data.unidades_tematicas)
           ? data.unidades_tematicas
           : [];
@@ -751,7 +742,6 @@ export default function PlaneacionForm({ token }: { token: string }) {
       plagio_otro: (values as any).plagio?.otro ?? "",
     };
 
-    // Referencias al backend
     payload.referencias = Array.isArray((values as any).referencias)
       ? (values as any).referencias
           .map((r: any) => {
@@ -771,7 +761,6 @@ export default function PlaneacionForm({ token }: { token: string }) {
           .filter(Boolean)
       : [];
 
-    // >>> NUEVO: unidades temáticas completas al backend
     payload.unidades_tematicas = Array.isArray(
       values.unidades_tematicas
     )
@@ -835,23 +824,18 @@ export default function PlaneacionForm({ token }: { token: string }) {
                       b.numero_sesion ?? j + 1,
                     temas_subtemas: b.temas_subtemas ?? "",
                     actividades: {
-                      inicio:
-                        b.actividades?.inicio ?? "",
-                      desarrollo:
-                        b.actividades?.desarrollo ?? "",
-                      cierre:
-                        b.actividades?.cierre ?? "",
+                      inicio: b.actividades?.inicio ?? "",
+                      desarrollo: b.actividades?.desarrollo ?? "",
+                      cierre: b.actividades?.cierre ?? "",
                     },
                     recursos: cleanRecursos,
                     evidencias: cleanEvidencias,
                     instrumentos: cleanInstrumentos,
-                    valor_porcentual:
-                      b.valor_porcentual ?? 0,
+                    valor_porcentual: b.valor_porcentual ?? 0,
                   };
                 })
               : [],
             precisiones: u.precisiones ?? "",
-            // porcentaje lo calculará el backend si viene null
             porcentaje: null,
           };
         })
@@ -864,10 +848,10 @@ export default function PlaneacionForm({ token }: { token: string }) {
     return payload;
   }
 
-  async function persistirPlaneacion(
+   async function persistirPlaneacion(
     values: PlaneacionType,
     opts?: { finalizar?: boolean }
-  ) {
+  ): Promise<boolean> {
     try {
       const payload = buildPayload(values, opts);
       const isUpdate = planeacionId != null;
@@ -894,7 +878,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
           //
         }
         toast.error(msg);
-        return;
+        return false; // 👈 IMPORTANTE
       }
 
       const data = await res.json();
@@ -926,11 +910,15 @@ export default function PlaneacionForm({ token }: { token: string }) {
             : "Planeación guardada correctamente."
         );
       }
+
+      return true; // 👈 ÉXITO
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message ?? "Error al guardar la planeación");
+      return false; // 👈 ERROR
     }
   }
+
 
   // ─────────────────────────────
   // Acciones
@@ -954,34 +942,65 @@ export default function PlaneacionForm({ token }: { token: string }) {
     await persistirPlaneacion(values, { finalizar: false });
   }
 
-  async function finalizarPlaneacion() {
-    const ok = await trigger(undefined, { shouldFocus: true });
-    if (!ok) {
-      toast.error("Revisa los campos requeridos antes de finalizar.");
-      return;
-    }
+    async function finalizarPlaneacion() {
+    // 1) Tomamos los valores actuales del formulario
+    let values = form.getValues();
 
-    const values = form.getValues();
+    // 2) Recalculamos el avance por sección con tu propia lógica
     const prog = computeSectionProgress(values);
     setSectionProgress(prog);
 
-    if (values.sesiones_por_semestre !== sumSesiones) {
-      toast.error(
-        "El total de sesiones (1.11) debe empatar con la suma de 3.9 para finalizar."
-      );
-      setActiveTab("organizacion");
-      return;
-    }
-    if ((values.horas_por_semestre?.total ?? 0) !== sumHoras) {
-      toast.error(
-        "El total de horas (1.12) debe empatar con la suma de 3.8 para finalizar."
-      );
-      setActiveTab("organizacion");
+    // 3) Si alguna sección tiene faltantes, bloqueamos y mandamos al usuario ahí
+    const entries = Object.entries(prog) as [SectionKey, SectionProgress][];
+    const firstIncomplete = entries.find(
+      ([, sec]) => (sec.missing?.length ?? 0) > 0
+    );
+
+    if (firstIncomplete) {
+      toast.error("Revisa los campos requeridos antes de finalizar.");
+      // Vamos a la pestaña de la primera sección incompleta
+      setActiveTab(firstIncomplete[0]);
       return;
     }
 
+    // 4) Ajustes automáticos de 1.11 y 1.12 para que cuadren con 3.9 y 3.8
+
+    let changed = false;
+
+    // Sesiones por semestre vs suma de sesiones de las unidades
+    if (values.sesiones_por_semestre !== sumSesiones) {
+      toast.warning(
+        "Se ajustó el total de sesiones (1.11) para que coincida con la suma de las unidades (3.9)."
+      );
+      setValue("sesiones_por_semestre", sumSesiones, {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+      changed = true;
+    }
+
+    // Horas totales vs suma de horas de las unidades
+    const totalHoras = values.horas_por_semestre?.total ?? 0;
+    if (totalHoras !== sumHoras) {
+      toast.warning(
+        "Se ajustó el total de horas (1.12) para que coincida con la suma de las unidades (3.8)."
+      );
+      setValue("horas_por_semestre.total", sumHoras, {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+      changed = true;
+    }
+
+    // Si ajustamos algo, volvemos a leer los valores
+    if (changed) {
+      values = form.getValues();
+    }
+
+    // 5) Ahora sí, mandamos al backend con status = "finalizada"
     await persistirPlaneacion(values, { finalizar: true });
   }
+
 
   const goNext = () => {
     const idx = TABS.indexOf(activeTab);
@@ -1240,7 +1259,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
 
         <aside className="hidden md:block">
           <div className="sticky top-16 space-y-4">
-            <div className="rounded-lg border p-4 max-h-[480px] overflow-y-auto">
+            <div className="rounded-lg border p-4 max-h-[calc(100vh-120px)] overflow-y-auto">
               <h3 className="font-medium mb-2">Avance por sección</h3>
               <p className="text-xs text-muted-foreground mb-2">
                 Se actualiza al cargar la planeación y al darle{" "}
@@ -1253,7 +1272,6 @@ export default function PlaneacionForm({ token }: { token: string }) {
                     const sec = sectionProgress[key];
                     const missing = sec.missing || [];
                     const isComplete = missing.length === 0;
-                    const shortList = missing.slice(0, 3);
 
                     return (
                       <div key={key} className="space-y-1">
@@ -1270,17 +1288,12 @@ export default function PlaneacionForm({ token }: { token: string }) {
                             {isComplete ? "Completa" : "Pendiente"}
                           </Badge>
                         </div>
+
                         {!isComplete && (
                           <ul className="list-disc list-inside text-muted-foreground">
-                            {shortList.map((m, i) => (
+                            {missing.map((m, i) => (
                               <li key={i}>{m}</li>
                             ))}
-                            {missing.length > shortList.length && (
-                              <li>
-                                … y{" "}
-                                {missing.length - shortList.length} más
-                              </li>
-                            )}
                           </ul>
                         )}
                       </div>

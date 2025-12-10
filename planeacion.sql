@@ -100,7 +100,8 @@ CREATE TABLE public.planeacion_datos_generales (
     horas_clinica numeric(5,2),
     horas_otro numeric(5,2),
     horas_total numeric(5,2),
-    docente_autor character varying(255)
+    docente_autor character varying(255),
+    academia character varying(255)
 );
 
 

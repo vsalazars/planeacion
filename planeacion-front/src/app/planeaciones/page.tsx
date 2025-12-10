@@ -193,68 +193,80 @@ export default function PlaneacionesPage() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {planeaciones.map((p) => (
-            <Card
-              key={p.id}
-              className="p-4 flex items-center justify-between hover:border-primary/50 transition-colors"
-            >
-              <div>
-                <h2 className="text-xl font-semibold">
-                  {p.nombre_planeacion || "Planeación sin título"}
-                </h2>
+          {planeaciones.map((p) => {
+            const isFinalizada = p.status === "finalizada";
 
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>
-                    Creada: <span className="font-medium">{formatFecha(p.created_at)}</span>
-                  </span>
-                  <span>•</span>
-                  <span>
-                    Última actualización:{" "}
-                    <span className="font-medium">
-                      {formatFecha(p.updated_at)}
+            return (
+              <Card
+                key={p.id}
+                className="p-4 flex items-center justify-between hover:border-primary/50 transition-colors"
+              >
+                <div>
+                  <h2 className="text-xl font-semibold">
+                    {p.nombre_planeacion || "Planeación sin título"}
+                  </h2>
+
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>
+                      Creada:{" "}
+                      <span className="font-medium">{formatFecha(p.created_at)}</span>
                     </span>
-                  </span>
+                    <span>•</span>
+                    <span>
+                      Última actualización:{" "}
+                      <span className="font-medium">
+                        {formatFecha(p.updated_at)}
+                      </span>
+                    </span>
+                  </div>
+
+                  <Badge
+                    variant={
+                      p.status === "finalizada"
+                        ? "default"
+                        : p.status === "en_progreso"
+                        ? "secondary"
+                        : "outline"
+                    }
+                    className="mt-2"
+                  >
+                    {p.status}
+                  </Badge>
                 </div>
 
-                <Badge
-                  variant={
-                    p.status === "finalizada"
-                      ? "default"
-                      : p.status === "en_progreso"
-                      ? "secondary"
-                      : "outline"
-                  }
-                  className="mt-2"
-                >
-                  {p.status}
-                </Badge>
-              </div>
+                <div className="flex items-center gap-3">
+                  {/* Editar (deshabilitado si está finalizada) */}
+                  <Button
+                    variant={isFinalizada ? "outline" : "secondary"}
+                    size="sm"
+                    disabled={isFinalizada}
+                    onClick={
+                      isFinalizada
+                        ? undefined
+                        : () =>
+                            router.push(
+                              `/dashboard-planeacion?planeacionId=${p.id}`
+                            )
+                    }
+                  >
+                    <Pencil className="h-4 w-4 mr-1" />
+                    {isFinalizada ? "Finalizada" : "Editar"}
+                  </Button>
 
-              <div className="flex items-center gap-3">
-                {/* Editar */}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    router.push(`/dashboard-planeacion?planeacionId=${p.id}`)
-                  }
-                >
-                  <Pencil className="h-4 w-4 mr-1" />
-                  Editar
-                </Button>
+                  {/* Eliminar (si quieres, también podrías bloquear para finalizadas) */}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={deletingId === p.id}
+                    onClick={() => eliminarPlaneacion(p.id)}
+                  >
+                    {deletingId === p.id ? "..." : <Trash2 className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
 
-                {/* Eliminar */}
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={deletingId === p.id}
-                  onClick={() => eliminarPlaneacion(p.id)}
-                >
-                  {deletingId === p.id ? "..." : <Trash2 className="h-4 w-4" />}
-                </Button>
-              </div>
-            </Card>
-          ))}
         </div>
       )}
     </main>
