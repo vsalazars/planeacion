@@ -75,8 +75,6 @@ func SetupRouter(db *pgxpool.Pool) *gin.Engine {
 	planeacionesHandler := &handlers.PlaneacionesHandler{DB: db}
 	handlers.RegisterPlaneacionesRoutes(protected, planeacionesHandler)
 
-	datosHandler := &handlers.DatosGeneralesHandler{DB: db}
-	handlers.RegisterDatosGeneralesRoutes(protected, datosHandler)
-
+	
 	return r
 }

@@ -81,15 +81,29 @@ export default function PlaneacionesPage() {
   }, []);
 
   // --------------------------------------------------------
-  // Crear planeación REAL
+  // Crear planeación: pedir nombre al usuario
   // --------------------------------------------------------
   async function crearPlaneacion() {
+    // Pedimos el nombre de la nueva planeación
+    const nombre = window.prompt(
+      "Escribe el nombre de la nueva planeación (por ejemplo: 'Álgebra 1 - Grupo A'):"
+    );
+
+    // Si el usuario cancela el prompt, no hacemos nada
+    if (nombre === null) return;
+
+    const trimmed = nombre.trim();
+    if (!trimmed) {
+      alert("El nombre de la planeación no puede estar vacío.");
+      return;
+    }
+
     try {
       const res = await fetch("/api/planeaciones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nombre_planeacion: "Nueva planeación",
+          nombre_planeacion: trimmed,
         }),
       });
 
