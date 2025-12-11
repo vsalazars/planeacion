@@ -464,7 +464,7 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
         )}
       </div>
 
-      {/* Nombre, objetivo y periodo */}
+      {/* Nombre y objetivo */}
       <div className="grid md:grid-cols-3 gap-4">
         <div>
           <Label>Nombre de la unidad temática</Label>
@@ -484,25 +484,26 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
             readOnly={readOnly}
           />
         </div>
+      </div>
 
-        <div>
-          <Label>Periodo de desarrollo</Label>
-          <div className="flex gap-2">
-            <Input
-              type="date"
-              {...register(`${name}.periodo_desarrollo.del`)}
-              readOnly={readOnly}
-            />
-            <Input
-              type="date"
-              {...register(`${name}.periodo_desarrollo.al`)}
-              readOnly={readOnly}
-            />
-          </div>
-          {errPeriodoDev && (
-            <p className="text-xs text-destructive mt-1">{errPeriodoDev}</p>
-          )}
+      {/* Periodo de desarrollo (una fila abajo) */}
+      <div>
+        <Label>Periodo de desarrollo</Label>
+        <div className="flex gap-2">
+          <Input
+            type="date"
+            {...register(`${name}.periodo_desarrollo.del`)}
+            readOnly={readOnly}
+          />
+          <Input
+            type="date"
+            {...register(`${name}.periodo_desarrollo.al`)}
+            readOnly={readOnly}
+          />
         </div>
+        {errPeriodoDev && (
+          <p className="text-xs text-destructive mt-1">{errPeriodoDev}</p>
+        )}
       </div>
 
       {/* Horas */}

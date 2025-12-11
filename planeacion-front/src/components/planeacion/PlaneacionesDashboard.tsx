@@ -100,6 +100,7 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
   // Handlers de UI
   // ─────────────────────────────
   function handleNuevaPlaneacion() {
+    // Abrimos el diálogo de shadcn, sin usar window.prompt
     setNuevoNombre("");
     setShowNuevaDialog(true);
   }
@@ -112,12 +113,18 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
     }
 
     if (typeof window !== "undefined") {
+      // limpiar cualquier id previo guardado
       window.localStorage.removeItem("planeacion_actual_id");
     }
 
+    // Esto indica que estamos en modo "nueva planeación"
     setSelectedId(null);
     setSelectedReadOnly(false);
+
+    // guardamos el nombre para el formulario nuevo
     setInitialNombrePlaneacion(nombre);
+
+    // forzamos remount del formulario para tenerlo en blanco
     setFormKey((k) => k + 1);
 
     setShowNuevaDialog(false);
@@ -130,8 +137,9 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
 
     const isFinal = pl.status === "finalizada";
 
+    // Seleccionar planeación (aunque esté finalizada)
     setSelectedId(id);
-    setInitialNombrePlaneacion(undefined);
+    setInitialNombrePlaneacion(undefined); // se tomará del backend
     setSelectedReadOnly(isFinal);
     setFormKey((k) => k + 1);
 
@@ -162,6 +170,7 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
   async function handleFinalizarDesdeForm() {
     await loadPlaneaciones();
     setSelectedReadOnly(true);
+    // Opcional: ocultar el placeholder de "sin guardar aún"
     setInitialNombrePlaneacion(undefined);
   }
 
@@ -214,7 +223,7 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
       setSelectedId(null);
       setSelectedReadOnly(false);
       setInitialNombrePlaneacion(undefined);
-      setFormKey((k) => k + 1);
+      setFormKey((k) => k + 1); // resetear formulario
       await loadPlaneaciones();
     } catch (err: any) {
       console.error(err);
@@ -244,7 +253,7 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
@@ -268,22 +277,22 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
         </div>
 
         {/* Layout principal responsivo */}
-        <div className="flex flex-col lg:flex-row gap-4 lg:h-[calc(100vh-136px)] min-h-0">
+        <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-136px)] min-h-0">
           {/* Columna izquierda: Mis planeaciones */}
           <Card
             className="
-              w-full
-              lg:w-1/5 xl:w-1/6
+              w-full lg:w-1/3 xl:w-1/4 2xl:w-1/5
+              min-w-[260px]
               p-4 flex flex-col gap-3 min-h-[260px]
               lg:sticky lg:top-[5.5rem]
-              lg:max-h-[calc(100vh-136px)]
+              max-h-[calc(100vh-136px)]
             "
           >
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between">
               <h2 className="font-semibold text-sm md:text-base">
                 Mis planeaciones
               </h2>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
+              <span className="text-xs text-muted-foreground">
                 {planeaciones.length} registro
                 {planeaciones.length === 1 ? "" : "s"}
               </span>
@@ -294,11 +303,11 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
             {error && <p className="text-xs text-destructive">{error}</p>}
 
             <ScrollArea className="flex-1 max-h-full pr-2">
-              <div className="space-y-3 pb-2">
+              <div className="space-y-3">
                 {/* 👉 Mostrar la nueva planeación activa (sin id) en la barra */}
                 {initialNombrePlaneacion && selectedId === null && (
                   <div className="w-full rounded-lg border border-dashed bg-muted/50 px-3 py-2 text-xs">
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col gap-1">
                       <div className="flex flex-col">
                         <span className="font-medium">
                           Nueva planeación
@@ -310,9 +319,14 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
                           (Sin guardar aún)
                         </span>
                       </div>
-                      <Badge variant="outline" className="shrink-0 text-[10px]">
-                        Borrador
-                      </Badge>
+                      <div className="pt-1">
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 text-[10px]"
+                        >
+                          Borrador
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -343,8 +357,8 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
                           : "hover:bg-muted"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex flex-col min-w-0">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-col">
                           <span className="font-medium truncate">
                             {p.nombre_planeacion || `Planeación #${p.id}`}
                           </span>
@@ -356,16 +370,19 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
                             {formatDate(p.updated_at) || "—"}
                           </span>
                         </div>
-                        <Badge
-                          variant={
-                            status === "finalizada" ? "default" : "outline"
-                          }
-                          className="shrink-0 text-[10px] whitespace-nowrap"
-                        >
-                          {status === "finalizada"
-                            ? "Finalizada"
-                            : "Borrador"}
-                        </Badge>
+
+                        <div className="pt-1">
+                          <Badge
+                            variant={
+                              status === "finalizada" ? "default" : "outline"
+                            }
+                            className="text-[10px]"
+                          >
+                            {status === "finalizada"
+                              ? "Finalizada"
+                              : "Borrador"}
+                          </Badge>
+                        </div>
                       </div>
                     </button>
                   );
@@ -375,23 +392,14 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
           </Card>
 
           {/* Columna derecha: Formulario (nueva / edición) */}
-          <Card
-            className="
-              w-full lg:flex-1
-              p-4
-              flex flex-col
-              lg:sticky lg:top-[5.5rem]
-              lg:max-h-[calc(100vh-136px)]
-              overflow-hidden
-            "
-          >
+          <Card className="w-full lg:flex-1 p-4 h-[calc(100vh-200px)] flex flex-col overflow-hidden mb-6">
             <PlaneacionForm
               key={formKey}
               token={token}
               planeacionId={selectedId}
               initialNombrePlaneacion={initialNombrePlaneacion}
-              readOnly={selectedReadOnly}
-              onFinalizar={handleFinalizarDesdeForm}
+              readOnly={selectedReadOnly} // 👈 seguir respetando solo lectura
+              onFinalizar={handleFinalizarDesdeForm} // 👈 refrescar barra al finalizar
             />
           </Card>
         </div>
