@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/hover-card";
 import { Info } from "lucide-react";
 
+type Props = {
+  readOnly?: boolean;
+};
+
 function AyudaEje({
   titulo,
   quePoner,
@@ -59,7 +63,7 @@ function AyudaEje({
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
 
-export default function RelacionesEjes() {
+export default function RelacionesEjes({ readOnly = false }: Props) {
   const {
     register,
     formState: { errors },
@@ -90,6 +94,7 @@ export default function RelacionesEjes() {
           <Input
             placeholder="Cálculo I, Álgebra"
             {...register("antecedentes")}
+            readOnly={readOnly}
           />
           <FieldError msg={errors.antecedentes?.message as string | undefined} />
         </div>
@@ -108,7 +113,11 @@ export default function RelacionesEjes() {
               ejemplo="Física I, Taller de Comunicación Oral y Escrita."
             />
           </div>
-          <Input placeholder="Física I" {...register("laterales")} />
+          <Input
+            placeholder="Física I"
+            {...register("laterales")}
+            readOnly={readOnly}
+          />
           <FieldError msg={errors.laterales?.message as string | undefined} />
         </div>
 
@@ -126,7 +135,11 @@ export default function RelacionesEjes() {
               ejemplo="Cálculo III, Mecánica de Materiales."
             />
           </div>
-          <Input placeholder="Cálculo III" {...register("subsecuentes")} />
+          <Input
+            placeholder="Cálculo III"
+            {...register("subsecuentes")}
+            readOnly={readOnly}
+          />
           <FieldError
             msg={errors.subsecuentes?.message as string | undefined}
           />
@@ -156,6 +169,7 @@ export default function RelacionesEjes() {
             rows={5}
             placeholder="Describe las actividades, evidencias y criterios de evaluación orientados a impacto social/ambiental…"
             {...register("ejes.compromiso_social_sustentabilidad")}
+            readOnly={readOnly}
           />
           <FieldError
             msg={
@@ -188,6 +202,7 @@ export default function RelacionesEjes() {
             rows={5}
             placeholder="Detalla reglas de convivencia, estrategias de participación, materiales inclusivos y mecanismos de atención…"
             {...register("ejes.perspectiva_genero")}
+            readOnly={readOnly}
           />
           <FieldError
             msg={
@@ -218,6 +233,7 @@ export default function RelacionesEjes() {
             rows={5}
             placeholder="Expón estándares, comparativas, colaboraciones externas y evidencias de logro intercultural…"
             {...register("ejes.internacionalizacion")}
+            readOnly={readOnly}
           />
           <FieldError
             msg={

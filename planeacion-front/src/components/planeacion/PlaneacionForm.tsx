@@ -31,12 +31,19 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+import PlaneacionAside from "./PlaneacionAside";
+import {
+  TABS,
+  TabKey,
+  SectionKey,
+  SectionProgress,
+  computeSectionProgress,
+} from "./PlaneacionValidation";
 
 type Unidad = { id: number; nombre: string; abreviatura?: string | null };
 
@@ -44,34 +51,28 @@ const API_BASE = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
 ).replace(/\/$/, "");
 
-const TABS = [
-  "datos",
-  "relaciones",
-  "organizacion",
-  "referencias",
-  "plagio",
-] as const;
-type TabKey = (typeof TABS)[number];
-type SectionKey = TabKey;
-
-type SectionProgress = {
-  missing: string[];
-};
-
-const SECTION_LABELS: Record<SectionKey, string> = {
-  datos: "1. Datos generales",
-  relaciones: "2. Relaciones y ejes",
-  organizacion: "3. Organización didáctica",
-  referencias: "4. Referencias",
-  plagio: "5. Plagio",
-};
-
-export default function PlaneacionForm({ token }: { token: string }) {
-  const router = useRouter();  // 👈 NUEVO
+export default function PlaneacionForm({
+  token,
+  planeacionId: planeacionIdProp,
+  initialNombrePlaneacion,
+  onFinalizar,
+  readOnly = false, // 👈 importante
+}: {
+  token: string;
+  planeacionId?: number | null;
+  initialNombrePlaneacion?: string;
+  onFinalizar?: () => void;
+  readOnly?: boolean;
+}) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("datos");
-  const [planeacionId, setPlaneacionId] = useState<number | null>(null);
-  const [planeacionNombre, setPlaneacionNombre] =
-    useState<string>("Borrador");
+  const [planeacionId, setPlaneacionId] = useState<number | null>(
+    planeacionIdProp ?? null
+  );
+
+  const [planeacionNombre, setPlaneacionNombre] = useState<string>(
+    initialNombrePlaneacion || "Borrador"
+  );
 
   const [sectionProgress, setSectionProgress] = useState<
     Record<SectionKey, SectionProgress>
@@ -86,6 +87,13 @@ export default function PlaneacionForm({ token }: { token: string }) {
   const [unidades, setUnidades] = useState<Unidad[]>([]);
   const [uLoading, setULoading] = useState(false);
   const [uError, setUError] = useState<string | null>(null);
+
+  // si es NUEVA planeación y cambia el nombre inicial, lo aplicamos
+  useEffect(() => {
+    if (!planeacionId) {
+      setPlaneacionNombre(initialNombrePlaneacion || "Borrador");
+    }
+  }, [initialNombrePlaneacion, planeacionId]);
 
   // ─────────────────────────────
   // Cargar unidades académicas
@@ -122,6 +130,11 @@ export default function PlaneacionForm({ token }: { token: string }) {
   // Leer planeacion_actual_id de localStorage
   // ─────────────────────────────
   useEffect(() => {
+    if (planeacionIdProp != null) {
+      setPlaneacionId(planeacionIdProp);
+      return;
+    }
+
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem("planeacion_actual_id");
     if (!raw) return;
@@ -129,7 +142,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
     if (!Number.isNaN(parsed) && parsed > 0) {
       setPlaneacionId(parsed);
     }
-  }, []);
+  }, [planeacionIdProp]);
 
   const form = useForm<PlaneacionType>({
     resolver: zodResolver(PlaneacionSchema),
@@ -215,7 +228,11 @@ export default function PlaneacionForm({ token }: { token: string }) {
             {
               numero_sesion: 1,
               temas_subtemas: "",
-              actividades: { inicio: "", desarrollo: "", cierre: "" },
+              actividades: {
+                inicio: "",
+                desarrollo: "",
+                cierre: "",
+              },
               recursos: [""],
               evidencias: [""],
               valor_porcentual: 0,
@@ -261,8 +278,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
 
   const unidadesCount = uts?.length ?? 0;
   const sumSesiones =
-    (uts || []).reduce((acc, u) => acc + (u?.sesiones_totales || 0), 0) ||
-    0;
+    (uts || []).reduce((acc, u) => acc + (u?.sesiones_totales || 0), 0) || 0;
   const sumHoras =
     (uts || []).reduce(
       (acc, u) =>
@@ -276,179 +292,11 @@ export default function PlaneacionForm({ token }: { token: string }) {
     ) || 0;
 
   // ─────────────────────────────
-  // Helpers de validación
-  // ─────────────────────────────
-  const isEmpty = (v: unknown) =>
-    v === undefined ||
-    v === null ||
-    (typeof v === "string" && v.trim() === "");
-
-  function computeSectionProgress(
-    values: PlaneacionType
-  ): Record<SectionKey, SectionProgress> {
-    const prog: Record<SectionKey, SectionProgress> = {
-      datos: { missing: [] },
-      relaciones: { missing: [] },
-      organizacion: { missing: [] },
-      referencias: { missing: [] },
-      plagio: { missing: [] },
-    };
-
-    // 1. DATOS GENERALES
-    if (isEmpty(values.periodo_escolar))
-      prog.datos.missing.push("Periodo escolar (1.1)");
-    if (isEmpty(values.plan_estudios_anio))
-      prog.datos.missing.push("Año del plan de estudios (1.2)");
-    if (isEmpty(values.semestre_nivel))
-      prog.datos.missing.push("Semestre / nivel (1.3)");
-    if (isEmpty(values.programa_academico))
-      prog.datos.missing.push("Programa académico (1.4)");
-
-    if (isEmpty(values.academia))
-      prog.datos.missing.push("Academia (1.5)");
-
-    if (isEmpty(values.unidad_aprendizaje_nombre))
-      prog.datos.missing.push("Unidad de aprendizaje (1.6)");
-    if (isEmpty(values.area_formacion))
-      prog.datos.missing.push("Área de formación (1.7)");
-    if (isEmpty(values.modalidad))
-      prog.datos.missing.push("Modalidad (1.8)");
-    if (isEmpty(values.grupos))
-      prog.datos.missing.push("Grupo(s) (1.10)");
-
-    const creditos: any = (values as any).creditos || {};
-    const credTepic = Number(creditos.tepic ?? 0);
-    const credSatca = Number(creditos.satca ?? 0);
-    const totalCreditos = credTepic + credSatca;
-
-    if (!Number.isFinite(totalCreditos) || totalCreditos <= 0) {
-      prog.datos.missing.push(
-        "Créditos TEPIC / SATCA (1.9–1.10): captura al menos un crédito"
-      );
-    }
-
-    const sesionesPorSem = Number(values.sesiones_por_semestre ?? 0);
-    if (!Number.isFinite(sesionesPorSem) || sesionesPorSem <= 0) {
-      prog.datos.missing.push("No. de sesiones por semestre (1.11)");
-    }
-
-    const det: any = (values as any).sesiones_por_semestre_det || {};
-    const sesionesAula = Number(det.aula ?? 0);
-    const sesionesLab = Number(det.laboratorio ?? 0);
-    const sesionesClinica = Number(det.clinica ?? 0);
-    const sesionesOtro = Number(det.otro ?? 0);
-    const totalSesionesEspacio =
-      sesionesAula + sesionesLab + sesionesClinica + sesionesOtro;
-
-    if (totalSesionesEspacio <= 0) {
-      prog.datos.missing.push(
-        "Distribuir No. de sesiones por semestre en aula / laboratorio / clínica / otro (1.11)"
-      );
-    } else if (
-      sesionesPorSem > 0 &&
-      totalSesionesEspacio !== sesionesPorSem
-    ) {
-      prog.datos.missing.push(
-        "La suma de aula/laboratorio/clínica/otro debe coincidir con el total de sesiones por semestre (1.11)"
-      );
-    }
-
-    const horas = values.horas_por_semestre || {};
-    const hTeoria = Number(horas.teoria ?? 0);
-    const hPractica = Number(horas.practica ?? 0);
-    const hAula = Number(horas.aula ?? 0);
-    const hLab = Number(horas.laboratorio ?? 0);
-    const hClinica = Number(horas.clinica ?? 0);
-    const hOtro = Number(horas.otro ?? 0);
-    const hTotal = Number(horas.total ?? 0);
-
-    if (!Number.isFinite(hTotal) || hTotal <= 0) {
-      prog.datos.missing.push("Total de horas por semestre (1.12)");
-    }
-
-    if (hTeoria + hPractica <= 0) {
-      prog.datos.missing.push(
-        "Horas por semestre — por tipo (teoría / práctica) (1.12)"
-      );
-    }
-
-    if (hAula + hLab + hClinica + hOtro <= 0) {
-      prog.datos.missing.push(
-        "Horas por semestre — por espacio (aula / laboratorio / clínica / otro) (1.12)"
-      );
-    }
-
-    // 2. RELACIONES / EJES
-    if (isEmpty(values.antecedentes))
-      prog.relaciones.missing.push("Antecedentes (2.1)");
-    if (isEmpty(values.laterales))
-      prog.relaciones.missing.push("Laterales (2.2)");
-    if (isEmpty(values.subsecuentes))
-      prog.relaciones.missing.push("Subsecuentes (2.3)");
-    if (isEmpty(values.ejes?.compromiso_social_sustentabilidad))
-      prog.relaciones.missing.push(
-        "Compromiso social y sustentabilidad (2.4)"
-      );
-    if (isEmpty(values.ejes?.perspectiva_genero))
-      prog.relaciones.missing.push("Perspectiva de género (2.5)");
-    if (isEmpty(values.ejes?.internacionalizacion))
-      prog.relaciones.missing.push("Internacionalización (2.6)");
-
-    // 3. ORGANIZACIÓN (ya sin proposito/estrategia/metodos)
-    (values.unidades_tematicas || []).forEach((u, idx) => {
-      const n = idx + 1;
-      if (isEmpty(u.nombre_unidad_tematica))
-        prog.organizacion.missing.push(`Unidad temática ${n}: nombre`);
-      if (isEmpty(u.unidad_competencia))
-        prog.organizacion.missing.push(
-          `Unidad temática ${n}: unidad de competencia`
-        );
-      if (
-        isEmpty(u.periodo_desarrollo?.del) ||
-        isEmpty(u.periodo_desarrollo?.al)
-      )
-        prog.organizacion.missing.push(
-          `Unidad temática ${n}: periodo de desarrollo`
-        );
-      if ((u.aprendizajes_esperados || []).every((a) => isEmpty(a)))
-        prog.organizacion.missing.push(
-          `Unidad temática ${n}: aprendizajes esperados`
-        );
-      if ((u.bloques || []).length === 0)
-        prog.organizacion.missing.push(
-          `Unidad temática ${n}: bloques de sesiones`
-        );
-    });
-
-    // 4. REFERENCIAS
-    const refs: any[] = ((values as any).referencias || []) as any[];
-    if (!refs.length) {
-      prog.referencias.missing.push("Agregar al menos una referencia (4.1)");
-    }
-
-    // 5. PLAGIO
-    const plagio: any = (values as any).plagio || {};
-    const anyPlagio =
-      !!plagio.ithenticate ||
-      !!plagio.turnitin ||
-      !isEmpty(plagio.otro);
-    if (!anyPlagio) {
-      prog.plagio.missing.push(
-        "Seleccionar al menos una herramienta o describir otra (5.1)"
-      );
-    }
-
-    return prog;
-  }
-
-  // ─────────────────────────────
   // Avance inicial al montar
   // ─────────────────────────────
   useEffect(() => {
     const initialValues = form.getValues();
-    setSectionProgress(
-      computeSectionProgress(initialValues as PlaneacionType)
-    );
+    setSectionProgress(computeSectionProgress(initialValues as PlaneacionType));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -467,9 +315,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
           },
         });
         if (!res.ok) {
-          throw new Error(
-            `No se pudo cargar la planeación (${res.status})`
-          );
+          throw new Error(`No se pudo cargar la planeación (${res.status})`);
         }
         const data: any = await res.json();
         if (cancel) return;
@@ -485,8 +331,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
           grupos: data.grupos ?? "",
           programa_academico: data.programa_academico ?? "",
           academia: data.academia ?? "",
-          unidad_aprendizaje_nombre:
-            data.unidad_aprendizaje_nombre ?? "",
+          unidad_aprendizaje_nombre: data.unidad_aprendizaje_nombre ?? "",
           area_formacion: data.area_formacion ?? undefined,
           modalidad: data.modalidad ?? "Escolarizada",
           sesiones_por_semestre:
@@ -508,14 +353,8 @@ export default function PlaneacionForm({ token }: { token: string }) {
             total: data.horas_total ?? 0,
           },
           creditos: {
-            tepic:
-              data.creditos_tepic ??
-              current.creditos?.tepic ??
-              0,
-            satca:
-              data.creditos_satca ??
-              current.creditos?.satca ??
-              0,
+            tepic: data.creditos_tepic ?? current.creditos?.tepic ?? 0,
+            satca: data.creditos_satca ?? current.creditos?.satca ?? 0,
           },
           antecedentes: data.antecedentes ?? "",
           laterales: data.laterales ?? "",
@@ -523,10 +362,8 @@ export default function PlaneacionForm({ token }: { token: string }) {
           ejes: {
             compromiso_social_sustentabilidad:
               data.ejes_compromiso_social_sustentabilidad ?? "",
-            perspectiva_genero:
-              data.ejes_perspectiva_genero ?? "",
-            internacionalizacion:
-              data.ejes_internacionalizacion ?? "",
+            perspectiva_genero: data.ejes_perspectiva_genero ?? "",
+            internacionalizacion: data.ejes_internacionalizacion ?? "",
           },
           // @ts-expect-error
           organizacion: {
@@ -556,109 +393,95 @@ export default function PlaneacionForm({ token }: { token: string }) {
           : [];
 
         if (rawUts.length > 0) {
-          newValues.unidades_tematicas = rawUts.map(
-            (u: any, idx: number) => {
-              const horas = u.horas || {};
-              const sesionesEsp = u.sesiones_por_espacio || {};
-              const bloques = Array.isArray(u.bloques) ? u.bloques : [];
+          newValues.unidades_tematicas = rawUts.map((u: any, idx: number) => {
+            const horas = u.horas || {};
+            const sesionesEsp = u.sesiones_por_espacio || {};
+            const bloques = Array.isArray(u.bloques) ? u.bloques : [];
 
-              return {
-                numero: u.numero ?? idx + 1,
-                nombre_unidad_tematica:
-                  u.nombre_unidad_tematica ?? "",
-                unidad_competencia: u.unidad_competencia ?? "",
-                periodo_desarrollo: {
-                  del: u.periodo_desarrollo?.del ?? "",
-                  al: u.periodo_desarrollo?.al ?? "",
-                },
-                horas: {
-                  aula: Number(horas.aula ?? 0),
-                  laboratorio: Number(horas.laboratorio ?? 0),
-                  taller: Number(horas.taller ?? 0),
-                  clinica: Number(horas.clinica ?? 0),
-                  otro: Number(horas.otro ?? 0),
-                },
-                sesiones_por_espacio: {
-                  aula: Number(sesionesEsp.aula ?? 0),
-                  laboratorio: Number(sesionesEsp.laboratorio ?? 0),
-                  taller: Number(sesionesEsp.taller ?? 0),
-                  clinica: Number(sesionesEsp.clinica ?? 0),
-                  otro: Number(sesionesEsp.otro ?? 0),
-                },
-                sesiones_totales: Number(u.sesiones_totales ?? 0),
-                periodo_registro_eval: u.periodo_registro_eval ?? "",
-                aprendizajes_esperados: Array.isArray(
-                  u.aprendizajes_esperados
-                )
-                  ? u.aprendizajes_esperados
-                  : [""],
-                bloques:
-                  bloques.length > 0
-                    ? bloques.map((b: any, j: number) => ({
-                        numero_sesion:
-                          b.numero_sesion ?? j + 1,
-                        temas_subtemas: b.temas_subtemas ?? "",
+            return {
+              numero: u.numero ?? idx + 1,
+              nombre_unidad_tematica: u.nombre_unidad_tematica ?? "",
+              unidad_competencia: u.unidad_competencia ?? "",
+              periodo_desarrollo: {
+                del: u.periodo_desarrollo?.del ?? "",
+                al: u.periodo_desarrollo?.al ?? "",
+              },
+              horas: {
+                aula: Number(horas.aula ?? 0),
+                laboratorio: Number(horas.laboratorio ?? 0),
+                taller: Number(horas.taller ?? 0),
+                clinica: Number(horas.clinica ?? 0),
+                otro: Number(horas.otro ?? 0),
+              },
+              sesiones_por_espacio: {
+                aula: Number(sesionesEsp.aula ?? 0),
+                laboratorio: Number(sesionesEsp.laboratorio ?? 0),
+                taller: Number(sesionesEsp.taller ?? 0),
+                clinica: Number(sesionesEsp.clinica ?? 0),
+                otro: Number(sesionesEsp.otro ?? 0),
+              },
+              sesiones_totales: Number(u.sesiones_totales ?? 0),
+              periodo_registro_eval: u.periodo_registro_eval ?? "",
+              aprendizajes_esperados: Array.isArray(
+                u.aprendizajes_esperados
+              )
+                ? u.aprendizajes_esperados
+                : [""],
+              bloques:
+                bloques.length > 0
+                  ? bloques.map((b: any, j: number) => ({
+                      numero_sesion: b.numero_sesion ?? j + 1,
+                      temas_subtemas: b.temas_subtemas ?? "",
+                      actividades: {
+                        inicio:
+                          b.actividades?.inicio ??
+                          b.actividades_inicio ??
+                          "",
+                        desarrollo:
+                          b.actividades?.desarrollo ??
+                          b.actividades_desarrollo ??
+                          "",
+                        cierre:
+                          b.actividades?.cierre ??
+                          b.actividades_cierre ??
+                          "",
+                      },
+                      recursos: Array.isArray(b.recursos) ? b.recursos : [],
+                      evidencias: Array.isArray(b.evidencias) ? b.evidencias : [],
+                      instrumentos: Array.isArray(b.instrumentos)
+                        ? b.instrumentos
+                        : [],
+                      valor_porcentual: Number(b.valor_porcentual ?? 0),
+                    }))
+                  : [
+                      {
+                        numero_sesion: 1,
+                        temas_subtemas: "",
                         actividades: {
-                          inicio:
-                            b.actividades?.inicio ??
-                            b.actividades_inicio ??
-                            "",
-                          desarrollo:
-                            b.actividades?.desarrollo ??
-                            b.actividades_desarrollo ??
-                            "",
-                          cierre:
-                            b.actividades?.cierre ??
-                            b.actividades_cierre ??
-                            "",
+                          inicio: "",
+                          desarrollo: "",
+                          cierre: "",
                         },
-                        recursos: Array.isArray(b.recursos)
-                          ? b.recursos
-                          : [],
-                        evidencias: Array.isArray(b.evidencias)
-                          ? b.evidencias
-                          : [],
-                        instrumentos: Array.isArray(
-                          b.instrumentos
-                        )
-                          ? b.instrumentos
-                          : [],
-                        valor_porcentual: Number(
-                          b.valor_porcentual ?? 0
-                        ),
-                      }))
-                    : [
-                        {
-                          numero_sesion: 1,
-                          temas_subtemas: "",
-                          actividades: {
-                            inicio: "",
-                            desarrollo: "",
-                            cierre: "",
-                          },
-                          recursos: [""],
-                          evidencias: [""],
-                          valor_porcentual: 0,
-                          instrumentos: [""],
-                        },
-                      ],
-                precisiones: u.precisiones ?? "",
-              };
-            }
-          );
+                        recursos: [""],
+                        evidencias: [""],
+                        valor_porcentual: 0,
+                        instrumentos: [""],
+                      },
+                    ],
+              precisiones: u.precisiones ?? "",
+            };
+          });
         }
 
         reset(newValues);
         setSectionProgress(computeSectionProgress(newValues));
-
         setPlaneacionNombre(data?.nombre_planeacion ?? "Borrador");
         toast.success("Planeación recuperada.");
       } catch (err: any) {
         if (!cancel) {
           console.error(err);
           toast.error(
-            err?.message ??
-              "No se pudo recuperar la planeación guardada."
+            err?.message ?? "No se pudo recuperar la planeación guardada."
           );
         }
       }
@@ -673,32 +496,24 @@ export default function PlaneacionForm({ token }: { token: string }) {
   // ─────────────────────────────
   // Payload para backend
   // ─────────────────────────────
-  function buildPayload(
-    values: PlaneacionType,
-    opts?: { finalizar?: boolean }
-  ) {
+  function buildPayload(values: PlaneacionType, opts?: { finalizar?: boolean }) {
     const payload: any = {
+      nombre_planeacion: planeacionNombre || null,
       periodo_escolar: values.periodo_escolar || null,
       plan_estudios_anio: values.plan_estudios_anio || null,
       semestre_nivel: values.semestre_nivel || null,
       grupos: values.grupos || null,
       programa_academico: values.programa_academico || null,
       academia: values.academia || null,
-      unidad_aprendizaje_nombre:
-        values.unidad_aprendizaje_nombre || null,
+      unidad_aprendizaje_nombre: values.unidad_aprendizaje_nombre || null,
       area_formacion: values.area_formacion || null,
       modalidad: values.modalidad || null,
-
       sesiones_por_semestre: values.sesiones_por_semestre ?? null,
-      sesiones_aula:
-        values.sesiones_por_semestre_det?.aula ?? null,
+      sesiones_aula: values.sesiones_por_semestre_det?.aula ?? null,
       sesiones_laboratorio:
         values.sesiones_por_semestre_det?.laboratorio ?? null,
-      sesiones_clinica:
-        values.sesiones_por_semestre_det?.clinica ?? null,
-      sesiones_otro:
-        values.sesiones_por_semestre_det?.otro ?? null,
-
+      sesiones_clinica: values.sesiones_por_semestre_det?.clinica ?? null,
+      sesiones_otro: values.sesiones_por_semestre_det?.otro ?? null,
       horas_teoria: values.horas_por_semestre?.teoria ?? null,
       horas_practica: values.horas_por_semestre?.practica ?? null,
       horas_aula: values.horas_por_semestre?.aula ?? null,
@@ -706,34 +521,23 @@ export default function PlaneacionForm({ token }: { token: string }) {
       horas_clinica: values.horas_por_semestre?.clinica ?? null,
       horas_otro: values.horas_por_semestre?.otro ?? null,
       horas_total: values.horas_por_semestre?.total ?? null,
-
       creditos_tepic:
-        values.creditos?.tepic != null
-          ? Number(values.creditos.tepic)
-          : null,
+        values.creditos?.tepic != null ? Number(values.creditos.tepic) : null,
       creditos_satca:
-        values.creditos?.satca != null
-          ? Number(values.creditos.satca)
-          : null,
-
+        values.creditos?.satca != null ? Number(values.creditos.satca) : null,
       antecedentes: values.antecedentes ?? "",
       laterales: values.laterales ?? "",
       subsecuentes: values.subsecuentes ?? "",
-
       ejes_compromiso_social_sustentabilidad:
         values.ejes?.compromiso_social_sustentabilidad ?? "",
-      ejes_perspectiva_genero:
-        values.ejes?.perspectiva_genero ?? "",
-      ejes_internacionalizacion:
-        values.ejes?.internacionalizacion ?? "",
-
+      ejes_perspectiva_genero: values.ejes?.perspectiva_genero ?? "",
+      ejes_internacionalizacion: values.ejes?.internacionalizacion ?? "",
       // @ts-expect-error
       org_proposito: (values as any).organizacion?.proposito ?? "",
       // @ts-expect-error
       org_estrategia: (values as any).organizacion?.estrategia ?? "",
       // @ts-expect-error
       org_metodos: (values as any).organizacion?.metodos ?? "",
-
       // @ts-expect-error
       plagio_ithenticate: !!(values as any).plagio?.ithenticate,
       // @ts-expect-error
@@ -761,9 +565,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
           .filter(Boolean)
       : [];
 
-    payload.unidades_tematicas = Array.isArray(
-      values.unidades_tematicas
-    )
+    payload.unidades_tematicas = Array.isArray(values.unidades_tematicas)
       ? values.unidades_tematicas.map((u, idx) => {
           const cleanAprendizajes = (u.aprendizajes_esperados || [])
             .map((a) => (a ?? "").trim())
@@ -771,8 +573,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
 
           return {
             numero: u.numero ?? idx + 1,
-            nombre_unidad_tematica:
-              u.nombre_unidad_tematica ?? "",
+            nombre_unidad_tematica: u.nombre_unidad_tematica ?? "",
             unidad_competencia: u.unidad_competencia ?? "",
             periodo_desarrollo: {
               del:
@@ -820,8 +621,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
                     .filter((x) => x.length > 0);
 
                   return {
-                    numero_sesion:
-                      b.numero_sesion ?? j + 1,
+                    numero_sesion: b.numero_sesion ?? j + 1,
                     temas_subtemas: b.temas_subtemas ?? "",
                     actividades: {
                       inicio: b.actividades?.inicio ?? "",
@@ -848,10 +648,15 @@ export default function PlaneacionForm({ token }: { token: string }) {
     return payload;
   }
 
-   async function persistirPlaneacion(
+  async function persistirPlaneacion(
     values: PlaneacionType,
     opts?: { finalizar?: boolean }
   ): Promise<boolean> {
+    if (readOnly) {
+      toast.info("Planeación finalizada: solo lectura, no se puede guardar.");
+      return false;
+    }
+
     try {
       const payload = buildPayload(values, opts);
       const isUpdate = planeacionId != null;
@@ -878,7 +683,7 @@ export default function PlaneacionForm({ token }: { token: string }) {
           //
         }
         toast.error(msg);
-        return false; // 👈 IMPORTANTE
+        return false;
       }
 
       const data = await res.json();
@@ -911,19 +716,23 @@ export default function PlaneacionForm({ token }: { token: string }) {
         );
       }
 
-      return true; // 👈 ÉXITO
+      return true;
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message ?? "Error al guardar la planeación");
-      return false; // 👈 ERROR
+      return false;
     }
   }
-
 
   // ─────────────────────────────
   // Acciones
   // ─────────────────────────────
   async function guardarAvance() {
+    if (readOnly) {
+      toast.info("Esta planeación está finalizada. Solo lectura.");
+      return;
+    }
+
     const values = form.getValues();
     const prog = computeSectionProgress(values);
     setSectionProgress(prog);
@@ -942,15 +751,17 @@ export default function PlaneacionForm({ token }: { token: string }) {
     await persistirPlaneacion(values, { finalizar: false });
   }
 
-    async function finalizarPlaneacion() {
-    // 1) Tomamos los valores actuales del formulario
+  async function finalizarPlaneacion() {
+    if (readOnly) {
+      toast.info("Esta planeación ya está finalizada (solo lectura).");
+      return;
+    }
+
     let values = form.getValues();
 
-    // 2) Recalculamos el avance por sección con tu propia lógica
     const prog = computeSectionProgress(values);
     setSectionProgress(prog);
 
-    // 3) Si alguna sección tiene faltantes, bloqueamos y mandamos al usuario ahí
     const entries = Object.entries(prog) as [SectionKey, SectionProgress][];
     const firstIncomplete = entries.find(
       ([, sec]) => (sec.missing?.length ?? 0) > 0
@@ -958,16 +769,12 @@ export default function PlaneacionForm({ token }: { token: string }) {
 
     if (firstIncomplete) {
       toast.error("Revisa los campos requeridos antes de finalizar.");
-      // Vamos a la pestaña de la primera sección incompleta
       setActiveTab(firstIncomplete[0]);
       return;
     }
 
-    // 4) Ajustes automáticos de 1.11 y 1.12 para que cuadren con 3.9 y 3.8
-
     let changed = false;
 
-    // Sesiones por semestre vs suma de sesiones de las unidades
     if (values.sesiones_por_semestre !== sumSesiones) {
       toast.warning(
         "Se ajustó el total de sesiones (1.11) para que coincida con la suma de las unidades (3.9)."
@@ -979,7 +786,6 @@ export default function PlaneacionForm({ token }: { token: string }) {
       changed = true;
     }
 
-    // Horas totales vs suma de horas de las unidades
     const totalHoras = values.horas_por_semestre?.total ?? 0;
     if (totalHoras !== sumHoras) {
       toast.warning(
@@ -992,15 +798,15 @@ export default function PlaneacionForm({ token }: { token: string }) {
       changed = true;
     }
 
-    // Si ajustamos algo, volvemos a leer los valores
     if (changed) {
       values = form.getValues();
     }
 
-    // 5) Ahora sí, mandamos al backend con status = "finalizada"
-    await persistirPlaneacion(values, { finalizar: true });
+    const ok = await persistirPlaneacion(values, { finalizar: true });
+    if (ok && onFinalizar) {
+      onFinalizar();
+    }
   }
-
 
   const goNext = () => {
     const idx = TABS.indexOf(activeTab);
@@ -1021,289 +827,341 @@ export default function PlaneacionForm({ token }: { token: string }) {
           e.preventDefault();
           guardarAvance();
         }}
-        className="grid gap-6 md:grid-cols-[1fr_320px]"
+        className="grid h-full flex-1 min-h-0 gap-6 md:grid-cols-[1fr_320px]"
       >
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col md:flex-row md:items-center md:gap-2">
-              <h1 className="text-xl font-semibold">
-                Planeación didáctica — {planeacionNombre}
-              </h1>
-              <Badge variant="secondary" className="w-fit mt-1 md:mt-0">
-                {planeacionId ? "Guardado" : "Borrador"}
-              </Badge>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={goPrev}
-                disabled={activeTab === "datos"}
-              >
-                Anterior
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={goNext}
-                disabled={activeTab === "plagio"}
-              >
-                Siguiente
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={guardarAvance}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Guardando…" : "Guardar avance"}
-              </Button>
-              <Button
-                type="button"
-                onClick={finalizarPlaneacion}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Guardando…" : "Finalizar"}
-              </Button>
-            </div>
-          </div>
-
+        {/* Columna izquierda: barra fija + contenido scrolleable por sección */}
+        <div className="flex flex-col h-full min-h-0">
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as TabKey)}
-            className="w-full"
+            className="w-full flex-1 flex flex-col min-h-0"
           >
-            <TabsList className="w-full justify-start overflow-x-auto">
-              <TabsTrigger value="datos">1. Datos generales</TabsTrigger>
-              <TabsTrigger value="relaciones">
-                2. Relaciones y ejes
-              </TabsTrigger>
-              <TabsTrigger value="organizacion">
-                3. Organización
-              </TabsTrigger>
-              <TabsTrigger value="referencias">
-                4. Referencias
-              </TabsTrigger>
-              <TabsTrigger value="plagio">5. Plagio</TabsTrigger>
+            {/* 🔝 Barra superior fija dentro del scroll interno */}
+            <div className="sticky top-0 z-20 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col md:flex-row md:items-center md:gap-2">
+                  <h1 className="text-xl font-semibold">
+                    Planeación didáctica — {planeacionNombre}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 md:mt-0">
+                    <Badge variant="secondary" className="w-fit">
+                      {planeacionId ? "Guardado" : "Borrador"}
+                    </Badge>
+                    {readOnly && (
+                      <Badge variant="outline" className="w-fit">
+                        Finalizada · solo lectura
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={goPrev}
+                    disabled={activeTab === "datos"}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={goNext}
+                    disabled={activeTab === "plagio"}
+                  >
+                    Siguiente
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={guardarAvance}
+                    disabled={isSubmitting || readOnly}
+                  >
+                    {isSubmitting ? "Guardando…" : "Guardar avance"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={finalizarPlaneacion}
+                    disabled={isSubmitting || readOnly}
+                  >
+                    {isSubmitting ? "Guardando…" : "Finalizar"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Tabs: 1–5 secciones */}
+             <TabsList
+              className="
+                w-full
+                overflow-x-auto
+                overflow-y-hidden      /* 👈 evita scroll vertical */
+                flex gap-2 p-2
+                bg-muted/30
+                rounded-lg
+              "
+            >
+              {[
+                { id: "datos", label: "Datos generales", num: 1 },
+                { id: "relaciones", label: "Relaciones y ejes", num: 2 },
+                { id: "organizacion", label: "Organización", num: 3 },
+                { id: "referencias", label: "Referencias", num: 4 },
+                { id: "plagio", label: "Plagio", num: 5 },
+              ].map((t) => (
+                <TabsTrigger
+                  key={t.id}
+                  value={t.id}
+                  className="
+                    group                         /* 👈 necesario */
+                    flex items-center gap-3
+                    px-4 py-2
+                    rounded-xl whitespace-nowrap
+                    text-sm font-medium
+                    transition-all duration-200
+
+                    data-[state=active]:bg-primary
+                    data-[state=active]:text-primary-foreground
+                    data-[state=active]:shadow-md
+                    data-[state=active]:scale-[1.02]
+
+                    hover:bg-primary/10
+                    hover:text-primary
+                  "
+                >
+                  <span
+                    className="
+                      flex items-center justify-center
+                      w-7 h-7 rounded-full 
+                      border border-foreground/20
+                      text-xs font-semibold
+                      bg-background
+                      transition-all duration-200
+
+                      /* ACTIVO — corregido */
+                      group-data-[state=active]:bg-primary-foreground/20
+                      group-data-[state=active]:text-primary-foreground
+                      group-data-[state=active]:border-transparent
+                    "
+                  >
+                    {t.num}
+                  </span>
+
+                  {t.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
-            <TabsContent value="datos" forceMount className="mt-4">
-              <ScrollArea className="h-[calc(100vh-270px)] pr-2">
-                <DatosGenerales
-                  unidades={unidades}
-                  loading={uLoading}
-                  error={uError}
-                />
+
+            </div>
+
+            {/* DATOS GENERALES */}
+            <TabsContent
+              value="datos"
+              forceMount
+              className="mt-4 flex-1 min-h-0 flex flex-col"
+            >
+              <ScrollArea className="flex-1 max-h-full pr-2">
+                <div className="pb-24">
+                  <DatosGenerales
+                    unidades={unidades}
+                    loading={uLoading}
+                    error={uError}
+                    readOnly={readOnly}
+                  />
+                </div>
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="relaciones" forceMount className="mt-4">
-              <ScrollArea className="h-[calc(100vh-270px)] pr-2">
-                <RelacionesEjes />
+            {/* RELACIONES Y EJES */}
+            <TabsContent
+              value="relaciones"
+              forceMount
+              className="mt-4 flex-1 min-h-0 flex flex-col"
+            >
+              <ScrollArea className="flex-1 max-h-full pr-2">
+                <div className="pb-24">
+                  <RelacionesEjes readOnly={readOnly} />
+                </div>
               </ScrollArea>
             </TabsContent>
 
+            {/* ORGANIZACIÓN DIDÁCTICA */}
             <TabsContent
               value="organizacion"
               forceMount
-              className="mt-4 space-y-4"
+              className="mt-4 flex-1 min-h-0 flex flex-col"
             >
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">
-                  3. Organización didáctica
-                </h2>
-                <div className="text-sm text-muted-foreground">
-                  Total sesiones: <b>{sumSesiones}</b> &nbsp;|&nbsp; Total
-                  horas: <b>{sumHoras}</b>
-                </div>
-              </div>
+              <ScrollArea className="flex-1 max-h-full pr-2">
+                <div className="space-y-4 pb-24">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">
+                      3. Organización didáctica
+                    </h2>
+                    <div className="text-sm text-muted-foreground">
+                      Total sesiones: <b>{sumSesiones}</b> &nbsp;|&nbsp; Total
+                      horas: <b>{sumHoras}</b>
+                    </div>
+                  </div>
 
-              <Accordion type="multiple" className="space-y-2">
-                {ut.fields.map((f, idx) => (
-                  <AccordionItem
-                    key={f.id}
-                    value={`ut-${idx}`}
-                    className="border rounded-lg px-3"
-                  >
-                    <AccordionTrigger className="text-left">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          Unidad temática {idx + 1}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          ({uts?.[idx]?.sesiones_totales ?? 0} sesiones,{" "}
-                          {Object.values(uts?.[idx]?.horas ?? {}).reduce(
-                            (a, b) => a + (b || 0),
-                            0
-                          )}{" "}
-                          h)
-                        </span>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="py-3">
-                        <UnidadTematica
-                          index={idx}
-                          onRemove={
-                            ut.fields.length > 1
-                              ? () => ut.remove(idx)
-                              : undefined
+                  <Accordion type="multiple" className="space-y-2">
+                    {ut.fields.map((f, idx) => (
+                      <AccordionItem
+                        key={f.id}
+                        value={`ut-${idx}`}
+                        className="border rounded-lg px-3"
+                      >
+                        <AccordionTrigger className="text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              Unidad temática {idx + 1}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              ({uts?.[idx]?.sesiones_totales ?? 0} sesiones,{" "}
+                              {Object.values(uts?.[idx]?.horas ?? {}).reduce(
+                                (a, b) => a + (b || 0),
+                                0
+                              )}{" "}
+                              h)
+                            </span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="py-3">
+                            <UnidadTematica
+                              index={idx}
+                              readOnly={readOnly}
+                              onRemove={
+                                !readOnly && ut.fields.length > 1
+                                  ? () => ut.remove(idx)
+                                  : undefined
+                              }
+                            />
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={async () => {
+                        const lastIdx = ut.fields.length - 1;
+                        if (lastIdx >= 0) {
+                          const ok = await trigger(
+                            `unidades_tematicas.${lastIdx}` as any,
+                            {
+                              shouldFocus: true,
+                            }
+                          );
+                          if (!ok) {
+                            toast.error(
+                              `Completa la Unidad Temática ${lastIdx + 1} antes de crear otra.`
+                            );
+                            return;
                           }
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={async () => {
-                    const lastIdx = ut.fields.length - 1;
-                    if (lastIdx >= 0) {
-                      const ok = await trigger(
-                        `unidades_tematicas.${lastIdx}` as any,
-                        {
-                          shouldFocus: true,
                         }
-                      );
-                      if (!ok) {
-                        toast.error(
-                          `Completa la Unidad Temática ${
-                            lastIdx + 1
-                          } antes de crear otra.`
-                        );
-                        return;
-                      }
-                    }
 
-                    ut.append({
-                      numero: ut.fields.length + 1,
-                      nombre_unidad_tematica: "",
-                      unidad_competencia: "",
-                      periodo_desarrollo: { del: "", al: "" },
-                      horas: {
-                        aula: 0,
-                        laboratorio: 0,
-                        taller: 0,
-                        clinica: 0,
-                        otro: 0,
-                      },
-                      sesiones_por_espacio: {
-                        aula: 0,
-                        laboratorio: 0,
-                        taller: 0,
-                        clinica: 0,
-                        otro: 0,
-                      },
-                      sesiones_totales: 0,
-                      periodo_registro_eval: "",
-                      aprendizajes_esperados: [""],
-                      bloques: [
-                        {
-                          numero_sesion: 1,
-                          temas_subtemas: "",
-                          actividades: {
-                            inicio: "",
-                            desarrollo: "",
-                            cierre: "",
+                        ut.append({
+                          numero: ut.fields.length + 1,
+                          nombre_unidad_tematica: "",
+                          unidad_competencia: "",
+                          periodo_desarrollo: { del: "", al: "" },
+                          horas: {
+                            aula: 0,
+                            laboratorio: 0,
+                            taller: 0,
+                            clinica: 0,
+                            otro: 0,
                           },
-                          recursos: [""],
-                          evidencias: [""],
-                          valor_porcentual: 0,
-                          instrumentos: [""],
-                        },
-                      ],
-                      precisiones: "",
-                    } as any);
-                  }}
-                >
-                  Agregar Unidad Temática
-                </Button>
+                          sesiones_por_espacio: {
+                            aula: 0,
+                            laboratorio: 0,
+                            taller: 0,
+                            clinica: 0,
+                            otro: 0,
+                          },
+                          sesiones_totales: 0,
+                          periodo_registro_eval: "",
+                          aprendizajes_esperados: [""],
+                          bloques: [
+                            {
+                              numero_sesion: 1,
+                              temas_subtemas: "",
+                              actividades: {
+                                inicio: "",
+                                desarrollo: "",
+                                cierre: "",
+                              },
+                              recursos: [""],
+                              evidencias: [""],
+                              valor_porcentual: 0,
+                              instrumentos: [""],
+                            },
+                          ],
+                          precisiones: "",
+                        } as any);
+                      }}
+                      disabled={readOnly}
+                    >
+                      Agregar Unidad Temática
+                    </Button>
 
-                <div className="ml-auto flex items-center gap-2 text-sm">
-                  <span>sesiones por semestre:</span>
-                  <Input
-                    className="w-24 h-9"
-                    type="number"
-                    value={sesionesPorSemestre ?? 0}
-                    readOnly
-                  />
-                  <span>total horas:</span>
-                  <Input
-                    className="w-24 h-9"
-                    type="number"
-                    step="0.1"
-                    value={totalHorasDeclarado ?? 0}
-                    readOnly
-                  />
+                    <div className="ml-auto flex items-center gap-2 text-sm">
+                      <span>sesiones por semestre:</span>
+                      <Input
+                        className="w-24 h-9"
+                        type="number"
+                        value={sesionesPorSemestre ?? 0}
+                        readOnly
+                      />
+                      <span>total horas:</span>
+                      <Input
+                        className="w-24 h-9"
+                        type="number"
+                        step="0.1"
+                        value={totalHorasDeclarado ?? 0}
+                        readOnly
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="referencias" forceMount className="mt-4">
-              <ScrollArea className="h-[calc(100vh-270px)] pr-2">
-                <Referencias unidadesCount={unidadesCount} />
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="plagio" forceMount className="mt-4">
-              <ScrollArea className="h-[calc(100vh-270px)] pr-2">
-                <Plagio />
+            {/* REFERENCIAS */}
+            <TabsContent
+              value="referencias"
+              forceMount
+              className="mt-4 flex-1 min-h-0 flex flex-col"
+            >
+              <ScrollArea className="flex-1 max-h-full pr-2">
+                <div className="pb-24">
+                  <Referencias
+                    unidadesCount={unidadesCount}
+                    readOnly={readOnly}
+                  />
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            {/* PLAGIO */}
+            <TabsContent
+              value="plagio"
+              forceMount
+              className="mt-4 flex-1 min-h-0 flex flex-col"
+            >
+              <ScrollArea className="flex-1 max-h-full pr-2">
+                <div className="pb-24">
+                  <Plagio readOnly={readOnly} />
+                </div>
               </ScrollArea>
             </TabsContent>
           </Tabs>
         </div>
 
-        <aside className="hidden md:block">
-          <div className="sticky top-16 space-y-4">
-            <div className="rounded-lg border p-4 max-h-[calc(100vh-120px)] overflow-y-auto">
-              <h3 className="font-medium mb-2">Avance por sección</h3>
-              <p className="text-xs text-muted-foreground mb-2">
-                Se actualiza al cargar la planeación y al darle{" "}
-                <b>Guardar avance</b>.
-              </p>
-              <Separator className="my-2" />
-              <div className="space-y-3 text-xs">
-                {(Object.keys(sectionProgress) as SectionKey[]).map(
-                  (key) => {
-                    const sec = sectionProgress[key];
-                    const missing = sec.missing || [];
-                    const isComplete = missing.length === 0;
-
-                    return (
-                      <div key={key} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">
-                            {SECTION_LABELS[key]}
-                          </span>
-                          <Badge
-                            variant={
-                              isComplete ? "default" : "outline"
-                            }
-                            className="text-[10px] px-2 py-0"
-                          >
-                            {isComplete ? "Completa" : "Pendiente"}
-                          </Badge>
-                        </div>
-
-                        {!isComplete && (
-                          <ul className="list-disc list-inside text-muted-foreground">
-                            {missing.map((m, i) => (
-                              <li key={i}>{m}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    );
-                  }
-                )}
-              </div>
-            </div>
-          </div>
-        </aside>
+        {/* Columna derecha: Avance por sección */}
+        <PlaneacionAside sectionProgress={sectionProgress} />
       </form>
     </FormProvider>
   );

@@ -6,7 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
-export default function Plagio() {
+type Props = {
+  readOnly?: boolean;
+};
+
+export default function Plagio({ readOnly = false }: Props) {
   const { register, setValue, watch } = useFormContext<PlaneacionType>();
 
   // Siempre usar watch con fallback booleano
@@ -24,11 +28,13 @@ export default function Plagio() {
         <label className="flex items-center gap-2">
           <Checkbox
             checked={ithenticate}
-            onCheckedChange={(v) =>
+            disabled={readOnly} // 👈 bloquea cambios
+            onCheckedChange={(v) => {
+              if (readOnly) return;
               setValue("plagio.ithenticate", Boolean(v), {
                 shouldValidate: true,
-              })
-            }
+              });
+            }}
           />
           <span>iThenticate</span>
         </label>
@@ -37,11 +43,13 @@ export default function Plagio() {
         <label className="flex items-center gap-2">
           <Checkbox
             checked={turnitin}
-            onCheckedChange={(v) =>
+            disabled={readOnly} // 👈 bloquea cambios
+            onCheckedChange={(v) => {
+              if (readOnly) return;
               setValue("plagio.turnitin", Boolean(v), {
                 shouldValidate: true,
-              })
-            }
+              });
+            }}
           />
           <span>Turnitin</span>
         </label>
@@ -52,6 +60,7 @@ export default function Plagio() {
           <Input
             placeholder="Nombre de la herramienta"
             {...register("plagio.otro")}
+            readOnly={readOnly} // 👈 solo lectura
           />
         </div>
       </div>

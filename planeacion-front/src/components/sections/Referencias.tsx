@@ -13,9 +13,12 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 
-type Props = { unidadesCount: number };
+type Props = {
+  unidadesCount: number;
+  readOnly?: boolean; // 👈 NUEVO
+};
 
-export default function Referencias({ unidadesCount }: Props) {
+export default function Referencias({ unidadesCount, readOnly = false }: Props) {
   const { control, register, setValue, watch } =
     useFormContext<PlaneacionType>();
 
@@ -49,6 +52,7 @@ export default function Referencias({ unidadesCount }: Props) {
                 <Input
                   {...register(`referencias.${i}.cita_apa` as const)}
                   placeholder="Apellido, A. (Año). Título..."
+                  readOnly={readOnly} // 👈 solo lectura
                 />
               </div>
 
@@ -69,7 +73,9 @@ export default function Referencias({ unidadesCount }: Props) {
                               ? "bg-primary text-primary-foreground"
                               : "hover:bg-muted"
                           }`}
+                          disabled={readOnly} // 👈 no permite cambiar selección
                           onClick={() => {
+                            if (readOnly) return;
                             const curr = new Set(selected);
                             if (curr.has(val)) curr.delete(val);
                             else curr.add(val);
@@ -100,6 +106,7 @@ export default function Referencias({ unidadesCount }: Props) {
                         shouldValidate: true,
                       })
                     }
+                    disabled={readOnly} // 👈 bloquea cambios
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona" />
@@ -119,6 +126,7 @@ export default function Referencias({ unidadesCount }: Props) {
                   type="button"
                   variant="outline"
                   onClick={() => refs.remove(i)}
+                  disabled={readOnly} // 👈 no permite quitar en solo lectura
                 >
                   Quitar referencia
                 </Button>
@@ -138,6 +146,7 @@ export default function Referencias({ unidadesCount }: Props) {
             tipo: "Básica",
           } as any)
         }
+        disabled={readOnly} // 👈 no agrega si está finalizada
       >
         Agregar referencia
       </Button>

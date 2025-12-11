@@ -41,7 +41,11 @@ const buildMinimalPathsForUnit = (idx: number) => {
   return { base, paths, bloqueKeys };
 };
 
-export default function OrganizacionDidactica() {
+type Props = {
+  readOnly?: boolean; // 👈 NUEVO
+};
+
+export default function OrganizacionDidactica({ readOnly = false }: Props) {
   const { control, register, trigger, getValues } =
     useFormContext<PlaneacionType>();
 
@@ -99,6 +103,7 @@ export default function OrganizacionDidactica() {
             type="number"
             min={0}
             {...register("sesiones_por_semestre", { valueAsNumber: true })}
+            readOnly={readOnly} // 👈 bloquea cambios en solo lectura
           />
         </div>
       </div>
@@ -110,8 +115,10 @@ export default function OrganizacionDidactica() {
             key={f.id}
             index={i}
             onRemove={() => {
+              if (readOnly) return; // seguridad extra
               unidadesFA.remove(i);
             }}
+            readOnly={readOnly} // 👈 se lo pasamos al hijo
           />
         ))}
       </div>
@@ -121,7 +128,10 @@ export default function OrganizacionDidactica() {
         <Button
           type="button"
           variant="outline"
+          disabled={readOnly} // 👈 no se puede agregar en solo lectura
           onClick={async () => {
+            if (readOnly) return;
+
             const values = getValues();
 
             // Validar todas las UT antes de agregar una nueva

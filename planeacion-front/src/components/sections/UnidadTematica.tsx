@@ -20,7 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-type Props = { index: number; onRemove?: () => void };
+type Props = { index: number; onRemove?: () => void; readOnly?: boolean };
 
 // Helper seguro para leer errores anidados
 const getErrMsg = (obj: any, path: string[]): string | undefined => {
@@ -41,12 +41,14 @@ function BloqueItem({
   restante,
   onRemove,
   renumerarDespues,
+  readOnly = false,
 }: {
   path: string;
   idx: number;
   restante: number;
   onRemove: () => void;
   renumerarDespues: () => void;
+  readOnly?: boolean;
 }) {
   const { register, setValue } = useFormContext<PlaneacionType>();
 
@@ -83,6 +85,7 @@ function BloqueItem({
             rows={2}
             placeholder="Tema — Subtema…"
             {...register(`${path}.temas_subtemas` as const)}
+            readOnly={readOnly}
           />
         </div>
       </div>
@@ -93,6 +96,7 @@ function BloqueItem({
           <Textarea
             rows={3}
             {...register(`${path}.actividades.inicio` as const)}
+            readOnly={readOnly}
           />
         </div>
         <div>
@@ -100,6 +104,7 @@ function BloqueItem({
           <Textarea
             rows={3}
             {...register(`${path}.actividades.desarrollo` as const)}
+            readOnly={readOnly}
           />
         </div>
         <div>
@@ -107,6 +112,7 @@ function BloqueItem({
           <Textarea
             rows={3}
             {...register(`${path}.actividades.cierre` as const)}
+            readOnly={readOnly}
           />
         </div>
       </div>
@@ -129,6 +135,7 @@ function BloqueItem({
                   : [];
               },
             })}
+            readOnly={readOnly}
           />
         </div>
         <div>
@@ -148,6 +155,7 @@ function BloqueItem({
                   : [];
               },
             })}
+            readOnly={readOnly}
           />
         </div>
       </div>
@@ -170,6 +178,7 @@ function BloqueItem({
                   : [];
               },
             })}
+            readOnly={readOnly}
           />
         </div>
         <div>
@@ -184,7 +193,9 @@ function BloqueItem({
             {...register(`${path}.valor_porcentual` as const, {
               valueAsNumber: true,
             })}
+            readOnly={readOnly}
             onBlur={(e) => {
+              if (readOnly) return;
               const v = Math.max(
                 0,
                 Math.min(100, Number(e.currentTarget.value || 0))
@@ -200,7 +211,11 @@ function BloqueItem({
       <div className="flex justify-end">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button type="button" variant="outline">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={readOnly} // 👈 no eliminar en solo lectura
+            >
               Eliminar sesión
             </Button>
           </AlertDialogTrigger>
@@ -231,7 +246,7 @@ function BloqueItem({
 }
 
 // ---------- Componente principal (Unidad Temática) ----------
-export default function UnidadTematica({ index, onRemove }: Props) {
+export default function UnidadTematica({ index, onRemove, readOnly = false }: Props) {
   const name = `unidades_tematicas.${index}` as const;
 
   const {
@@ -420,7 +435,11 @@ export default function UnidadTematica({ index, onRemove }: Props) {
         {onRemove && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button type="button" variant="outline">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={readOnly} // 👈 no se puede borrar UT en solo lectura
+              >
                 Eliminar unidad
               </Button>
             </AlertDialogTrigger>
@@ -452,6 +471,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
           <Input
             placeholder="Ej. Fundamentos de programación"
             {...register(`${name}.nombre_unidad_tematica` as const)}
+            readOnly={readOnly}
           />
         </div>
 
@@ -461,14 +481,23 @@ export default function UnidadTematica({ index, onRemove }: Props) {
             rows={2}
             placeholder="Redacción clara (verbo–objeto–condición de calidad)…"
             {...register(`${name}.unidad_competencia`)}
+            readOnly={readOnly}
           />
         </div>
 
         <div>
           <Label>Periodo de desarrollo</Label>
           <div className="flex gap-2">
-            <Input type="date" {...register(`${name}.periodo_desarrollo.del`)} />
-            <Input type="date" {...register(`${name}.periodo_desarrollo.al`)} />
+            <Input
+              type="date"
+              {...register(`${name}.periodo_desarrollo.del`)}
+              readOnly={readOnly}
+            />
+            <Input
+              type="date"
+              {...register(`${name}.periodo_desarrollo.al`)}
+              readOnly={readOnly}
+            />
           </div>
           {errPeriodoDev && (
             <p className="text-xs text-destructive mt-1">{errPeriodoDev}</p>
@@ -498,6 +527,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
               min={0}
               step="0.1"
               {...register(`${name}.horas.aula`, { valueAsNumber: true })}
+              readOnly={readOnly}
             />
             <Input
               type="number"
@@ -506,24 +536,28 @@ export default function UnidadTematica({ index, onRemove }: Props) {
               {...register(`${name}.horas.laboratorio`, {
                 valueAsNumber: true,
               })}
+              readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
               step="0.1"
               {...register(`${name}.horas.taller`, { valueAsNumber: true })}
+              readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
               step="0.1"
               {...register(`${name}.horas.clinica`, { valueAsNumber: true })}
+              readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
               step="0.1"
               {...register(`${name}.horas.otro`, { valueAsNumber: true })}
+              readOnly={readOnly}
             />
             <Input type="number" value={totalHoras} readOnly tabIndex={-1} />
           </div>
@@ -554,6 +588,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
                 `${name}.sesiones_por_espacio.aula` as any,
                 { valueAsNumber: true }
               )}
+              readOnly={readOnly}
             />
             <Input
               type="number"
@@ -562,6 +597,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
                 `${name}.sesiones_por_espacio.laboratorio` as any,
                 { valueAsNumber: true }
               )}
+              readOnly={readOnly}
             />
             <Input
               type="number"
@@ -570,6 +606,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
                 `${name}.sesiones_por_espacio.taller` as any,
                 { valueAsNumber: true }
               )}
+              readOnly={readOnly}
             />
             <Input
               type="number"
@@ -578,6 +615,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
                 `${name}.sesiones_por_espacio.clinica` as any,
                 { valueAsNumber: true }
               )}
+              readOnly={readOnly}
             />
             <Input
               type="number"
@@ -586,6 +624,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
                 `${name}.sesiones_por_espacio.otro` as any,
                 { valueAsNumber: true }
               )}
+              readOnly={readOnly}
             />
             <Input type="number" value={totalSesiones} readOnly tabIndex={-1} />
           </div>
@@ -622,11 +661,13 @@ export default function UnidadTematica({ index, onRemove }: Props) {
                 {...register(
                   `${name}.aprendizajes_esperados.${i}` as const
                 )}
+                readOnly={readOnly}
               />
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => aprendizajes.remove(i)}
+                disabled={readOnly}
               >
                 Quitar
               </Button>
@@ -636,6 +677,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
             type="button"
             variant="outline"
             onClick={() => aprendizajes.append("")}
+            disabled={readOnly}
           >
             Agregar aprendizaje
           </Button>
@@ -662,6 +704,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
                 bloques.remove(i);
               }}
               renumerarDespues={renumerar}
+              readOnly={readOnly} // 👈 se propaga a cada sesión
             />
           ))}
 
@@ -670,7 +713,10 @@ export default function UnidadTematica({ index, onRemove }: Props) {
             <Button
               type="button"
               variant="outline"
+              disabled={readOnly}
               onClick={async () => {
+                if (readOnly) return;
+
                 const baseFields = [
                   `${name}.numero`,
                   `${name}.nombre_unidad_tematica`,
@@ -746,7 +792,10 @@ export default function UnidadTematica({ index, onRemove }: Props) {
             <Button
               type="button"
               variant="outline"
+              disabled={readOnly}
               onClick={async () => {
+                if (readOnly) return;
+
                 const values = getValues();
                 const list = (values?.unidades_tematicas?.[index]?.bloques ||
                   []) as any[];
@@ -847,6 +896,7 @@ export default function UnidadTematica({ index, onRemove }: Props) {
           rows={3}
           placeholder="Adecuaciones avaladas por academia, justificación, etc."
           {...register(`${name}.precisiones`)}
+          readOnly={readOnly}
         />
       </div>
     </div>

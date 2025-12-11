@@ -19,9 +19,15 @@ type Props = {
   unidades?: Array<{ id: number; nombre: string; abreviatura?: string | null }>;
   loading?: boolean;
   error?: string | null;
+  readOnly?: boolean; // 👈 NUEVO
 };
 
-export default function DatosGenerales({}: Props) {
+export default function DatosGenerales({
+  unidades,
+  loading,
+  error,
+  readOnly = false, // 👈 por defecto editable
+}: Props) {
   const { register, control, setValue } = useFormContext<PlaneacionType>();
 
   // ----- Cálculos horas -----
@@ -86,23 +92,44 @@ export default function DatosGenerales({}: Props) {
         1. Datos generales y de identificación
       </h2>
 
+      {/* (Opcional) Mensajes de carga / error */}
+      {loading && (
+        <p className="text-xs text-muted-foreground">
+          Cargando unidades académicas…
+        </p>
+      )}
+      {error && (
+        <p className="text-xs text-destructive">
+          Error al cargar unidades: {error}
+        </p>
+      )}
+
       {/* Fila 1 */}
       <div className="grid md:grid-cols-6 gap-4">
         <div>
           <Label>Periodo escolar</Label>
-          <Input placeholder="24/1" {...register("periodo_escolar")} />
+          <Input
+            placeholder="24/1"
+            {...register("periodo_escolar")}
+            readOnly={readOnly}
+          />
         </div>
         <div>
-          <Label>Año del plan de estudios</Label>
+          <Label>Año plan estudios</Label>
           <Input
             type="number"
             placeholder="2024"
             {...register("plan_estudios_anio", { valueAsNumber: true })}
+            readOnly={readOnly}
           />
         </div>
         <div>
           <Label>Semestre / Nivel</Label>
-          <Input placeholder="III / 3" {...register("semestre_nivel")} />
+          <Input
+            placeholder="III / 3"
+            {...register("semestre_nivel")}
+            readOnly={readOnly}
+          />
         </div>
         <div>
           <Label>Créditos Tepic</Label>
@@ -110,6 +137,7 @@ export default function DatosGenerales({}: Props) {
             type="number"
             step="0.1"
             {...register("creditos.tepic", { valueAsNumber: true })}
+            readOnly={readOnly}
           />
         </div>
         <div>
@@ -118,11 +146,16 @@ export default function DatosGenerales({}: Props) {
             type="number"
             step="0.1"
             {...register("creditos.satca", { valueAsNumber: true })}
+            readOnly={readOnly}
           />
         </div>
         <div>
           <Label>Grupo(s)</Label>
-          <Input placeholder="7CM1, 4IV2" {...register("grupos")} />
+          <Input
+            placeholder="7CM1, 4IV2"
+            {...register("grupos")}
+            readOnly={readOnly}
+          />
         </div>
       </div>
 
@@ -133,6 +166,7 @@ export default function DatosGenerales({}: Props) {
           <Input
             placeholder="Ingeniería X"
             {...register("programa_academico")}
+            readOnly={readOnly}
           />
         </div>
         <div>
@@ -140,6 +174,7 @@ export default function DatosGenerales({}: Props) {
           <Input
             placeholder="Nombre de la academia"
             {...register("academia")}
+            readOnly={readOnly}
           />
         </div>
         <div>
@@ -147,6 +182,7 @@ export default function DatosGenerales({}: Props) {
           <Input
             placeholder="Nombre de la unidad"
             {...register("unidad_aprendizaje_nombre")}
+            readOnly={readOnly}
           />
         </div>
         <div>
@@ -158,6 +194,7 @@ export default function DatosGenerales({}: Props) {
               <Select
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
+                disabled={readOnly} // 👈 bloquea cambios
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona" />
@@ -187,6 +224,7 @@ export default function DatosGenerales({}: Props) {
               <Select
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
+                disabled={readOnly} // 👈 bloquea cambios
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona" />
@@ -204,9 +242,8 @@ export default function DatosGenerales({}: Props) {
         </div>
       </div>
 
-      {/* Fila 3 con Cards */}
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Card 1: Sesiones */}
+      {/* Fila 3: solo No. de sesiones por semestre */}
+      <div className="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle>No. de sesiones por semestre</CardTitle>
@@ -221,6 +258,7 @@ export default function DatosGenerales({}: Props) {
                     {...register(`sesiones_por_semestre_det.${k}`, {
                       valueAsNumber: true,
                     })}
+                    readOnly={readOnly} // 👈 evita cambios
                   />
                 </div>
               ))}
@@ -231,7 +269,10 @@ export default function DatosGenerales({}: Props) {
             </div>
           </CardContent>
         </Card>
+      </div>
 
+      {/* Fila 4: las dos cards de horas */}
+      <div className="grid md:grid-cols-2 gap-4">
         {/* Card 2: Horas por tipo */}
         <Card>
           <CardHeader>
@@ -248,6 +289,7 @@ export default function DatosGenerales({}: Props) {
                     {...register(`horas_por_semestre.${k}`, {
                       valueAsNumber: true,
                     })}
+                    readOnly={readOnly}
                   />
                 </div>
               ))}
@@ -275,6 +317,7 @@ export default function DatosGenerales({}: Props) {
                     {...register(`horas_por_semestre.${k}`, {
                       valueAsNumber: true,
                     })}
+                    readOnly={readOnly}
                   />
                 </div>
               ))}
