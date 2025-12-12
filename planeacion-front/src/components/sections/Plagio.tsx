@@ -13,22 +13,20 @@ type Props = {
 export default function Plagio({ readOnly = false }: Props) {
   const { register, setValue, watch } = useFormContext<PlaneacionType>();
 
-  // Siempre usar watch con fallback booleano
   const ithenticate = !!watch("plagio.ithenticate");
   const turnitin = !!watch("plagio.turnitin");
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 w-full max-w-full min-w-0 overflow-x-hidden">
       <h2 className="text-lg font-semibold">
         5. Herramientas para detectar el plagio
       </h2>
 
-      <div className="flex items-center gap-6">
-        {/* iThenticate */}
-        <label className="flex items-center gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-full min-w-0">
+        <label className="flex items-center gap-2 w-full min-w-0">
           <Checkbox
             checked={ithenticate}
-            disabled={readOnly} // 👈 bloquea cambios
+            disabled={readOnly}
             onCheckedChange={(v) => {
               if (readOnly) return;
               setValue("plagio.ithenticate", Boolean(v), {
@@ -36,31 +34,28 @@ export default function Plagio({ readOnly = false }: Props) {
               });
             }}
           />
-          <span>iThenticate</span>
+          <span className="text-sm">iThenticate</span>
         </label>
 
-        {/* Turnitin */}
-        <label className="flex items-center gap-2">
+        <label className="flex items-center gap-2 w-full min-w-0">
           <Checkbox
             checked={turnitin}
-            disabled={readOnly} // 👈 bloquea cambios
+            disabled={readOnly}
             onCheckedChange={(v) => {
               if (readOnly) return;
-              setValue("plagio.turnitin", Boolean(v), {
-                shouldValidate: true,
-              });
+              setValue("plagio.turnitin", Boolean(v), { shouldValidate: true });
             }}
           />
-          <span>Turnitin</span>
+          <span className="text-sm">Turnitin</span>
         </label>
 
-        {/* Otro */}
-        <div className="flex-1">
-          <Label>Otro (especificar)</Label>
+        <div className="sm:col-span-2 lg:col-span-1 w-full max-w-full min-w-0">
+          <Label className="text-sm mb-1.5 block">Otro (especificar)</Label>
           <Input
+            className="w-full max-w-full min-w-0"
             placeholder="Nombre de la herramienta"
             {...register("plagio.otro")}
-            readOnly={readOnly} // 👈 solo lectura
+            readOnly={readOnly}
           />
         </div>
       </div>

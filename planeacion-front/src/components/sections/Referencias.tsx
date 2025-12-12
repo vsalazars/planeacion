@@ -15,12 +15,11 @@ import {
 
 type Props = {
   unidadesCount: number;
-  readOnly?: boolean; // 👈 NUEVO
+  readOnly?: boolean;
 };
 
 export default function Referencias({ unidadesCount, readOnly = false }: Props) {
-  const { control, register, setValue, watch } =
-    useFormContext<PlaneacionType>();
+  const { control, register, setValue, watch } = useFormContext<PlaneacionType>();
 
   const refs = useFieldArray({
     control,
@@ -28,76 +27,78 @@ export default function Referencias({ unidadesCount, readOnly = false }: Props) 
   });
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 w-full max-w-full min-w-0 overflow-x-hidden">
       <h2 className="text-lg font-semibold">4. Referencias</h2>
 
-      <div className="space-y-3">
+      <div className="space-y-3 w-full max-w-full min-w-0">
         {refs.fields.map((f, i) => {
           const selectedRaw =
-            (watch(
-              `referencias.${i}.unidades_aplica`
-            ) as Array<number | string> | undefined) || [];
+            (watch(`referencias.${i}.unidades_aplica`) as Array<number | string> | undefined) || [];
           const selected = selectedRaw
             .map((v) => Number(v))
             .filter((v) => !Number.isNaN(v));
 
-          const tipoActual = (watch(
-            `referencias.${i}.tipo`
-          ) as string | undefined) || "";
+          const tipoActual =
+            (watch(`referencias.${i}.tipo`) as string | undefined) || "";
 
           return (
-            <div key={f.id} className="border rounded-xl p-3 space-y-2">
-              <div>
+            <div
+              key={f.id}
+              className="border rounded-xl p-3 space-y-2 w-full max-w-full min-w-0 overflow-x-hidden"
+            >
+              <div className="w-full max-w-full min-w-0">
                 <Label>Cita APA</Label>
                 <Input
+                  className="w-full max-w-full min-w-0"
                   {...register(`referencias.${i}.cita_apa` as const)}
                   placeholder="Apellido, A. (Año). Título..."
-                  readOnly={readOnly} // 👈 solo lectura
+                  readOnly={readOnly}
                 />
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-2">
+              <div className="grid sm:grid-cols-2 gap-2 w-full max-w-full min-w-0">
                 {/* Unidades a las que aplica */}
-                <div>
+                <div className="w-full max-w-full min-w-0 overflow-x-hidden">
                   <Label>Unidades temáticas a las que aplica</Label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {Array.from({ length: unidadesCount }).map((_, n) => {
-                      const val = n + 1;
-                      const isSel = selected.includes(val);
-                      return (
-                        <button
-                          type="button"
-                          key={val}
-                          className={`px-2 py-1 rounded border text-sm transition ${
-                            isSel
-                              ? "bg-primary text-primary-foreground"
-                              : "hover:bg-muted"
-                          }`}
-                          disabled={readOnly} // 👈 no permite cambiar selección
-                          onClick={() => {
-                            if (readOnly) return;
-                            const curr = new Set(selected);
-                            if (curr.has(val)) curr.delete(val);
-                            else curr.add(val);
-                            const arr = Array.from(curr).sort(
-                              (a, b) => a - b
-                            );
-                            setValue(
-                              `referencias.${i}.unidades_aplica`,
-                              arr,
-                              { shouldValidate: true }
-                            );
-                          }}
-                        >
-                          {val}
-                        </button>
-                      );
-                    })}
+
+                  {/* ✅ si hay muchas unidades, que NO empuje el ancho */}
+                  <div className="mt-1 w-full max-w-full overflow-x-auto [scrollbar-gutter:stable]">
+                    <div className="flex flex-nowrap sm:flex-wrap gap-2 min-w-max sm:min-w-0">
+                      {Array.from({ length: unidadesCount }).map((_, n) => {
+                        const val = n + 1;
+                        const isSel = selected.includes(val);
+
+                        return (
+                          <button
+                            type="button"
+                            key={val}
+                            className={`px-2 py-1 rounded border text-sm transition shrink-0 ${
+                              isSel
+                                ? "bg-primary text-primary-foreground"
+                                : "hover:bg-muted"
+                            }`}
+                            disabled={readOnly}
+                            onClick={() => {
+                              if (readOnly) return;
+                              const curr = new Set(selected);
+                              if (curr.has(val)) curr.delete(val);
+                              else curr.add(val);
+                              const arr = Array.from(curr).sort((a, b) => a - b);
+                              setValue(`referencias.${i}.unidades_aplica`, arr, {
+                                shouldValidate: true,
+                              });
+                            }}
+                          >
+                            {val}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
                 {/* Tipo */}
-                <div>
+                <div className="w-full max-w-full min-w-0">
                   <Label>Tipo</Label>
                   <Select
                     value={tipoActual}
@@ -106,9 +107,9 @@ export default function Referencias({ unidadesCount, readOnly = false }: Props) 
                         shouldValidate: true,
                       })
                     }
-                    disabled={readOnly} // 👈 bloquea cambios
+                    disabled={readOnly}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full max-w-full min-w-0">
                       <SelectValue placeholder="Selecciona" />
                     </SelectTrigger>
                     <SelectContent>
@@ -126,7 +127,7 @@ export default function Referencias({ unidadesCount, readOnly = false }: Props) 
                   type="button"
                   variant="outline"
                   onClick={() => refs.remove(i)}
-                  disabled={readOnly} // 👈 no permite quitar en solo lectura
+                  disabled={readOnly}
                 >
                   Quitar referencia
                 </Button>
@@ -146,7 +147,7 @@ export default function Referencias({ unidadesCount, readOnly = false }: Props) 
             tipo: "Básica",
           } as any)
         }
-        disabled={readOnly} // 👈 no agrega si está finalizada
+        disabled={readOnly}
       >
         Agregar referencia
       </Button>

@@ -42,23 +42,16 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // 👉 para forzar remount del formulario
   const [formKey, setFormKey] = useState(0);
-  // 👉 nombre inicial cuando es NUEVA planeación
   const [initialNombrePlaneacion, setInitialNombrePlaneacion] = useState<
     string | undefined
   >(undefined);
 
-  // 👉 indica si la planeación seleccionada es solo lectura (finalizada)
   const [selectedReadOnly, setSelectedReadOnly] = useState(false);
 
-  // 👉 estado del diálogo "Nueva planeación"
   const [showNuevaDialog, setShowNuevaDialog] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState("");
 
-  // ─────────────────────────────
-  // Cargar lista de planeaciones
-  // ─────────────────────────────
   async function loadPlaneaciones() {
     try {
       setLoading(true);
@@ -96,11 +89,7 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
     loadPlaneaciones();
   }, []);
 
-  // ─────────────────────────────
-  // Handlers de UI
-  // ─────────────────────────────
   function handleNuevaPlaneacion() {
-    // Abrimos el diálogo de shadcn, sin usar window.prompt
     setNuevoNombre("");
     setShowNuevaDialog(true);
   }
@@ -113,18 +102,13 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
     }
 
     if (typeof window !== "undefined") {
-      // limpiar cualquier id previo guardado
       window.localStorage.removeItem("planeacion_actual_id");
     }
 
-    // Esto indica que estamos en modo "nueva planeación"
     setSelectedId(null);
     setSelectedReadOnly(false);
 
-    // guardamos el nombre para el formulario nuevo
     setInitialNombrePlaneacion(nombre);
-
-    // forzamos remount del formulario para tenerlo en blanco
     setFormKey((k) => k + 1);
 
     setShowNuevaDialog(false);
@@ -137,9 +121,8 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
 
     const isFinal = pl.status === "finalizada";
 
-    // Seleccionar planeación (aunque esté finalizada)
     setSelectedId(id);
-    setInitialNombrePlaneacion(undefined); // se tomará del backend
+    setInitialNombrePlaneacion(undefined);
     setSelectedReadOnly(isFinal);
     setFormKey((k) => k + 1);
 
@@ -166,15 +149,12 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
     await loadPlaneaciones();
   }
 
-  // 👉 se llama desde PlaneacionForm cuando la planeación se finaliza
   async function handleFinalizarDesdeForm() {
     await loadPlaneaciones();
     setSelectedReadOnly(true);
-    // Opcional: ocultar el placeholder de "sin guardar aún"
     setInitialNombrePlaneacion(undefined);
   }
 
-  // 👉 eliminar la planeación seleccionada
   async function handleEliminarSeleccionada() {
     if (!selectedId) {
       toast.error("Selecciona una planeación para eliminar.");
@@ -223,7 +203,7 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
       setSelectedId(null);
       setSelectedReadOnly(false);
       setInitialNombrePlaneacion(undefined);
-      setFormKey((k) => k + 1); // resetear formulario
+      setFormKey((k) => k + 1);
       await loadPlaneaciones();
     } catch (err: any) {
       console.error(err);
@@ -243,10 +223,9 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
 
   return (
     <>
-      <div className="flex flex-col gap-4 h-full min-h-0">
-        {/* Header general */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex flex-col">
+      <div className="flex flex-col gap-4 h-full min-h-0 min-w-0">
+        <div className="flex items-center justify-between flex-wrap gap-2 min-w-0">
+          <div className="flex flex-col min-w-0">
             <h1 className="text-2xl font-semibold">Planeación didáctica</h1>
             <p className="text-sm text-muted-foreground">
               Gestiona tus planeaciones y edítalas en un solo lugar.
@@ -276,23 +255,23 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
           </div>
         </div>
 
-        {/* Layout principal responsivo */}
-        <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-136px)] min-h-0">
-          {/* Columna izquierda: Mis planeaciones */}
+        {/* ✅ clave: items-stretch + min-h-0 para que ambos hijos tengan mismo alto */}
+        <div className="flex flex-col lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch gap-4 h-[calc(100vh-136px)] min-h-0 overflow-hidden min-w-0">
+          {/* ✅ clave: h-full + min-h-0 + overflow-hidden para que ScrollArea mande */}
           <Card
             className="
-              w-full lg:w-1/3 xl:w-1/4 2xl:w-1/5
-              min-w-[260px]
-              p-4 flex flex-col gap-3 min-h-[260px]
+              w-full lg:w-[320px] lg:shrink-0
+              p-4 flex flex-col gap-3
+              h-full min-h-0 overflow-hidden
               lg:sticky lg:top-[5.5rem]
-              max-h-[calc(100vh-136px)]
+              min-w-0
             "
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between min-w-0">
               <h2 className="font-semibold text-sm md:text-base">
                 Mis planeaciones
               </h2>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {planeaciones.length} registro
                 {planeaciones.length === 1 ? "" : "s"}
               </span>
@@ -302,16 +281,14 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
 
             {error && <p className="text-xs text-destructive">{error}</p>}
 
-            <ScrollArea className="flex-1 max-h-full pr-2">
-              <div className="space-y-3">
-                {/* 👉 Mostrar la nueva planeación activa (sin id) en la barra */}
+            {/* ✅ clave: min-h-0 + h-full para que sí aparezca scroll interno */}
+            <ScrollArea className="flex-1 min-h-0 h-full">
+              <div className="space-y-3 pr-2">
                 {initialNombrePlaneacion && selectedId === null && (
                   <div className="w-full rounded-lg border border-dashed bg-muted/50 px-3 py-2 text-xs">
                     <div className="flex flex-col gap-1">
                       <div className="flex flex-col">
-                        <span className="font-medium">
-                          Nueva planeación
-                        </span>
+                        <span className="font-medium">Nueva planeación</span>
                         <span className="text-[11px] text-muted-foreground truncate">
                           {initialNombrePlaneacion}
                         </span>
@@ -357,8 +334,8 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
                           : "hover:bg-muted"
                       }`}
                     >
-                      <div className="flex flex-col gap-1">
-                        <div className="flex flex-col">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <div className="flex flex-col min-w-0">
                           <span className="font-medium truncate">
                             {p.nombre_planeacion || `Planeación #${p.id}`}
                           </span>
@@ -378,9 +355,7 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
                             }
                             className="text-[10px]"
                           >
-                            {status === "finalizada"
-                              ? "Finalizada"
-                              : "Borrador"}
+                            {status === "finalizada" ? "Finalizada" : "Borrador"}
                           </Badge>
                         </div>
                       </div>
@@ -391,21 +366,20 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
             </ScrollArea>
           </Card>
 
-          {/* Columna derecha: Formulario (nueva / edición) */}
-          <Card className="w-full lg:flex-1 p-4 h-[calc(100vh-200px)] flex flex-col overflow-hidden mb-6">
+          {/* ✅ también h-full/min-h-0 para que cuadre con la izquierda */}
+          <Card className="w-full lg:flex-1 p-4 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
             <PlaneacionForm
               key={formKey}
               token={token}
               planeacionId={selectedId}
               initialNombrePlaneacion={initialNombrePlaneacion}
-              readOnly={selectedReadOnly} // 👈 seguir respetando solo lectura
-              onFinalizar={handleFinalizarDesdeForm} // 👈 refrescar barra al finalizar
+              readOnly={selectedReadOnly}
+              onFinalizar={handleFinalizarDesdeForm}
             />
           </Card>
         </div>
       </div>
 
-      {/* Dialog shadcn para nueva planeación */}
       <Dialog open={showNuevaDialog} onOpenChange={setShowNuevaDialog}>
         <DialogContent>
           <form
@@ -417,8 +391,8 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
             <DialogHeader>
               <DialogTitle>Nueva planeación</DialogTitle>
               <DialogDescription>
-                Escribe el nombre con el que deseas identificar esta
-                planeación didáctica.
+                Escribe el nombre con el que deseas identificar esta planeación
+                didáctica.
               </DialogDescription>
             </DialogHeader>
 

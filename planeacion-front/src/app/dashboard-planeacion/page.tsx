@@ -177,9 +177,10 @@ export default async function DashboardPlaneacionPage() {
       </header>
 
       {/* Contenido: sin scroll global, solo interno en PlaneacionesDashboard */}
-      <div className="flex-1 min-h-0 max-w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
+      <div className="flex-1 min-h-0 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-hidden overflow-x-hidden">
         <PlaneacionesDashboard token={token} />
       </div>
+
     </main>
   );
 }

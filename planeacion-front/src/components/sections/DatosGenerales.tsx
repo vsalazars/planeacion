@@ -204,7 +204,7 @@ export default function DatosGenerales({
                     "Institucional",
                     "Científica básica",
                     "Profesional",
-                    "Terminal y de integración",
+                    "Terminal",
                   ].map((op) => (
                     <SelectItem key={op} value={op}>
                       {op}

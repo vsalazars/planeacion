@@ -37,7 +37,8 @@ export default function PlaneacionAside({ sectionProgress }: Props) {
       : 0;
 
   return (
-    <aside className="hidden md:block w-full lg:w-80 xl:w-88">
+    <aside className="hidden md:flex w-[320px] shrink-0">
+
       <div className="sticky top-[5.5rem]">
         <Card className="max-h-[calc(100vh-136px)] overflow-y-auto flex flex-col shadow-sm pb-4">
 

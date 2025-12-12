@@ -19,19 +19,13 @@ import Plagio from "../sections/Plagio";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -56,7 +50,7 @@ export default function PlaneacionForm({
   planeacionId: planeacionIdProp,
   initialNombrePlaneacion,
   onFinalizar,
-  readOnly = false, // 👈 importante
+  readOnly = false,
 }: {
   token: string;
   planeacionId?: number | null;
@@ -88,25 +82,19 @@ export default function PlaneacionForm({
   const [uLoading, setULoading] = useState(false);
   const [uError, setUError] = useState<string | null>(null);
 
-  // si es NUEVA planeación y cambia el nombre inicial, lo aplicamos
   useEffect(() => {
     if (!planeacionId) {
       setPlaneacionNombre(initialNombrePlaneacion || "Borrador");
     }
   }, [initialNombrePlaneacion, planeacionId]);
 
-  // ─────────────────────────────
-  // Cargar unidades académicas
-  // ─────────────────────────────
   useEffect(() => {
     let cancel = false;
     (async () => {
       try {
         setULoading(true);
         setUError(null);
-        const res = await fetch(`${API_BASE}/unidades`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`${API_BASE}/unidades`, { cache: "no-store" });
         if (!res.ok) throw new Error(`No se pudo cargar (${res.status})`);
         const data = await res.json();
         const items: Unidad[] = Array.isArray(data?.items)
@@ -126,22 +114,16 @@ export default function PlaneacionForm({
     };
   }, []);
 
-  // ─────────────────────────────
-  // Leer planeacion_actual_id de localStorage
-  // ─────────────────────────────
   useEffect(() => {
     if (planeacionIdProp != null) {
       setPlaneacionId(planeacionIdProp);
       return;
     }
-
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem("planeacion_actual_id");
     if (!raw) return;
     const parsed = Number(raw);
-    if (!Number.isNaN(parsed) && parsed > 0) {
-      setPlaneacionId(parsed);
-    }
+    if (!Number.isNaN(parsed) && parsed > 0) setPlaneacionId(parsed);
   }, [planeacionIdProp]);
 
   const form = useForm<PlaneacionType>({
@@ -169,12 +151,7 @@ export default function PlaneacionForm({
       academia: "",
       semanas_por_semestre: 16,
       sesiones_por_semestre: 0,
-      sesiones_por_semestre_det: {
-        aula: 0,
-        laboratorio: 0,
-        clinica: 0,
-        otro: 0,
-      },
+      sesiones_por_semestre_det: { aula: 0, laboratorio: 0, clinica: 0, otro: 0 },
       horas_por_semestre: {
         aula: 0,
         teoria: 0,
@@ -196,31 +173,15 @@ export default function PlaneacionForm({
         internacionalizacion: "",
       },
       // @ts-expect-error
-      organizacion: {
-        proposito: "",
-        estrategia: "",
-        metodos: "",
-      },
+      organizacion: { proposito: "", estrategia: "", metodos: "" },
       unidades_tematicas: [
         {
           numero: 1,
           nombre_unidad_tematica: "",
           unidad_competencia: "",
           periodo_desarrollo: { del: "", al: "" },
-          horas: {
-            aula: 0,
-            laboratorio: 0,
-            taller: 0,
-            clinica: 0,
-            otro: 0,
-          },
-          sesiones_por_espacio: {
-            aula: 0,
-            laboratorio: 0,
-            taller: 0,
-            clinica: 0,
-            otro: 0,
-          },
+          horas: { aula: 0, laboratorio: 0, taller: 0, clinica: 0, otro: 0 },
+          sesiones_por_espacio: { aula: 0, laboratorio: 0, taller: 0, clinica: 0, otro: 0 },
           sesiones_totales: 0,
           periodo_registro_eval: "",
           aprendizajes_esperados: [""],
@@ -228,11 +189,7 @@ export default function PlaneacionForm({
             {
               numero_sesion: 1,
               temas_subtemas: "",
-              actividades: {
-                inicio: "",
-                desarrollo: "",
-                cierre: "",
-              },
+              actividades: { inicio: "", desarrollo: "", cierre: "" },
               recursos: [""],
               evidencias: [""],
               valor_porcentual: 0,
@@ -244,11 +201,7 @@ export default function PlaneacionForm({
       ],
       referencias: [],
       // @ts-expect-error
-      plagio: {
-        ithenticate: false,
-        turnitin: false,
-        otro: "",
-      },
+      plagio: { ithenticate: false, turnitin: false, otro: "" },
     },
     mode: "onSubmit",
   });
@@ -267,18 +220,14 @@ export default function PlaneacionForm({
   });
 
   const uts = useWatch({ control, name: "unidades_tematicas" });
-  const sesionesPorSemestre = useWatch({
-    control,
-    name: "sesiones_por_semestre",
-  });
-  const totalHorasDeclarado = useWatch({
-    control,
-    name: "horas_por_semestre.total",
-  });
+  const sesionesPorSemestre = useWatch({ control, name: "sesiones_por_semestre" });
+  const totalHorasDeclarado = useWatch({ control, name: "horas_por_semestre.total" });
 
   const unidadesCount = uts?.length ?? 0;
+
   const sumSesiones =
     (uts || []).reduce((acc, u) => acc + (u?.sesiones_totales || 0), 0) || 0;
+
   const sumHoras =
     (uts || []).reduce(
       (acc, u) =>
@@ -291,18 +240,12 @@ export default function PlaneacionForm({
       0
     ) || 0;
 
-  // ─────────────────────────────
-  // Avance inicial al montar
-  // ─────────────────────────────
   useEffect(() => {
     const initialValues = form.getValues();
     setSectionProgress(computeSectionProgress(initialValues as PlaneacionType));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─────────────────────────────
-  // Cargar datos de la planeación (si hay id)
-  // ─────────────────────────────
   useEffect(() => {
     if (!planeacionId) return;
     let cancel = false;
@@ -310,13 +253,10 @@ export default function PlaneacionForm({
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/planeaciones/${planeacionId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) {
+        if (!res.ok)
           throw new Error(`No se pudo cargar la planeación (${res.status})`);
-        }
         const data: any = await res.json();
         if (cancel) return;
 
@@ -325,8 +265,7 @@ export default function PlaneacionForm({
         const newValues: PlaneacionType = {
           ...current,
           periodo_escolar: data.periodo_escolar ?? "",
-          plan_estudios_anio:
-            data.plan_estudios_anio ?? current.plan_estudios_anio,
+          plan_estudios_anio: data.plan_estudios_anio ?? current.plan_estudios_anio,
           semestre_nivel: data.semestre_nivel ?? "",
           grupos: data.grupos ?? "",
           programa_academico: data.programa_academico ?? "",
@@ -391,13 +330,11 @@ export default function PlaneacionForm({
         const rawUts: any[] = Array.isArray(data.unidades_tematicas)
           ? data.unidades_tematicas
           : [];
-
         if (rawUts.length > 0) {
           newValues.unidades_tematicas = rawUts.map((u: any, idx: number) => {
             const horas = u.horas || {};
             const sesionesEsp = u.sesiones_por_espacio || {};
             const bloques = Array.isArray(u.bloques) ? u.bloques : [];
-
             return {
               numero: u.numero ?? idx + 1,
               nombre_unidad_tematica: u.nombre_unidad_tematica ?? "",
@@ -422,9 +359,7 @@ export default function PlaneacionForm({
               },
               sesiones_totales: Number(u.sesiones_totales ?? 0),
               periodo_registro_eval: u.periodo_registro_eval ?? "",
-              aprendizajes_esperados: Array.isArray(
-                u.aprendizajes_esperados
-              )
+              aprendizajes_esperados: Array.isArray(u.aprendizajes_esperados)
                 ? u.aprendizajes_esperados
                 : [""],
               bloques:
@@ -433,18 +368,10 @@ export default function PlaneacionForm({
                       numero_sesion: b.numero_sesion ?? j + 1,
                       temas_subtemas: b.temas_subtemas ?? "",
                       actividades: {
-                        inicio:
-                          b.actividades?.inicio ??
-                          b.actividades_inicio ??
-                          "",
+                        inicio: b.actividades?.inicio ?? b.actividades_inicio ?? "",
                         desarrollo:
-                          b.actividades?.desarrollo ??
-                          b.actividades_desarrollo ??
-                          "",
-                        cierre:
-                          b.actividades?.cierre ??
-                          b.actividades_cierre ??
-                          "",
+                          b.actividades?.desarrollo ?? b.actividades_desarrollo ?? "",
+                        cierre: b.actividades?.cierre ?? b.actividades_cierre ?? "",
                       },
                       recursos: Array.isArray(b.recursos) ? b.recursos : [],
                       evidencias: Array.isArray(b.evidencias) ? b.evidencias : [],
@@ -457,11 +384,7 @@ export default function PlaneacionForm({
                       {
                         numero_sesion: 1,
                         temas_subtemas: "",
-                        actividades: {
-                          inicio: "",
-                          desarrollo: "",
-                          cierre: "",
-                        },
+                        actividades: { inicio: "", desarrollo: "", cierre: "" },
                         recursos: [""],
                         evidencias: [""],
                         valor_porcentual: 0,
@@ -493,9 +416,6 @@ export default function PlaneacionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planeacionId, token]);
 
-  // ─────────────────────────────
-  // Payload para backend
-  // ─────────────────────────────
   function buildPayload(values: PlaneacionType, opts?: { finalizar?: boolean }) {
     const payload: any = {
       nombre_planeacion: planeacionNombre || null,
@@ -510,8 +430,7 @@ export default function PlaneacionForm({
       modalidad: values.modalidad || null,
       sesiones_por_semestre: values.sesiones_por_semestre ?? null,
       sesiones_aula: values.sesiones_por_semestre_det?.aula ?? null,
-      sesiones_laboratorio:
-        values.sesiones_por_semestre_det?.laboratorio ?? null,
+      sesiones_laboratorio: values.sesiones_por_semestre_det?.laboratorio ?? null,
       sesiones_clinica: values.sesiones_por_semestre_det?.clinica ?? null,
       sesiones_otro: values.sesiones_por_semestre_det?.otro ?? null,
       horas_teoria: values.horas_por_semestre?.teoria ?? null,
@@ -576,16 +495,12 @@ export default function PlaneacionForm({
             nombre_unidad_tematica: u.nombre_unidad_tematica ?? "",
             unidad_competencia: u.unidad_competencia ?? "",
             periodo_desarrollo: {
-              del:
-                u.periodo_desarrollo?.del &&
-                u.periodo_desarrollo.del.trim() !== ""
-                  ? u.periodo_desarrollo.del
-                  : null,
-              al:
-                u.periodo_desarrollo?.al &&
-                u.periodo_desarrollo.al.trim() !== ""
-                  ? u.periodo_desarrollo.al
-                  : null,
+              del: u.periodo_desarrollo?.del?.trim()
+                ? u.periodo_desarrollo.del
+                : null,
+              al: u.periodo_desarrollo?.al?.trim()
+                ? u.periodo_desarrollo.al
+                : null,
             },
             horas: {
               aula: u.horas?.aula ?? 0,
@@ -602,23 +517,21 @@ export default function PlaneacionForm({
               otro: u.sesiones_por_espacio?.otro ?? 0,
             },
             sesiones_totales: u.sesiones_totales ?? 0,
-            periodo_registro_eval:
-              u.periodo_registro_eval &&
-              u.periodo_registro_eval.trim() !== ""
-                ? u.periodo_registro_eval
-                : null,
+            periodo_registro_eval: u.periodo_registro_eval?.trim()
+              ? u.periodo_registro_eval
+              : null,
             aprendizajes_esperados: cleanAprendizajes,
             bloques: Array.isArray(u.bloques)
               ? u.bloques.map((b, j) => {
                   const cleanRecursos = (b.recursos || [])
                     .map((x) => String(x ?? "").trim())
-                    .filter((x) => x.length > 0);
+                    .filter(Boolean);
                   const cleanEvidencias = (b.evidencias || [])
                     .map((x) => String(x ?? "").trim())
-                    .filter((x) => x.length > 0);
+                    .filter(Boolean);
                   const cleanInstrumentos = (b.instrumentos || [])
                     .map((x) => String(x ?? "").trim())
-                    .filter((x) => x.length > 0);
+                    .filter(Boolean);
 
                   return {
                     numero_sesion: b.numero_sesion ?? j + 1,
@@ -641,17 +554,11 @@ export default function PlaneacionForm({
         })
       : [];
 
-    if (opts?.finalizar) {
-      payload.status = "finalizada";
-    }
-
+    if (opts?.finalizar) payload.status = "finalizada";
     return payload;
   }
 
-  async function persistirPlaneacion(
-    values: PlaneacionType,
-    opts?: { finalizar?: boolean }
-  ): Promise<boolean> {
+  async function persistirPlaneacion(values: PlaneacionType, opts?: { finalizar?: boolean }) {
     if (readOnly) {
       toast.info("Planeación finalizada: solo lectura, no se puede guardar.");
       return false;
@@ -679,43 +586,32 @@ export default function PlaneacionForm({
         try {
           const data = await res.json();
           msg = data?.error || data?.msg || msg;
-        } catch {
-          //
-        }
+        } catch {}
         toast.error(msg);
         return false;
       }
 
       const data = await res.json();
-      console.log("Planeación guardada", data);
 
       if (!planeacionId && data?.id) {
         const newId = Number(data.id);
         if (!Number.isNaN(newId) && newId > 0) {
           setPlaneacionId(newId);
           if (typeof window !== "undefined") {
-            window.localStorage.setItem(
-              "planeacion_actual_id",
-              String(newId)
-            );
+            window.localStorage.setItem("planeacion_actual_id", String(newId));
           }
         }
       }
 
-      if (data?.nombre_planeacion) {
-        setPlaneacionNombre(data.nombre_planeacion);
-      }
+      if (data?.nombre_planeacion) setPlaneacionNombre(data.nombre_planeacion);
 
-      if (opts?.finalizar) {
-        toast.success("Planeación finalizada correctamente.");
-      } else {
-        toast.success(
-          planeacionId
-            ? "Avance guardado correctamente."
-            : "Planeación guardada correctamente."
-        );
-      }
-
+      toast.success(
+        opts?.finalizar
+          ? "Planeación finalizada correctamente."
+          : planeacionId
+          ? "Avance guardado correctamente."
+          : "Planeación guardada correctamente."
+      );
       return true;
     } catch (err: any) {
       console.error(err);
@@ -724,15 +620,11 @@ export default function PlaneacionForm({
     }
   }
 
-  // ─────────────────────────────
-  // Acciones
-  // ─────────────────────────────
   async function guardarAvance() {
     if (readOnly) {
       toast.info("Esta planeación está finalizada. Solo lectura.");
       return;
     }
-
     const values = form.getValues();
     const prog = computeSectionProgress(values);
     setSectionProgress(prog);
@@ -747,7 +639,6 @@ export default function PlaneacionForm({
         "Aviso: el total de horas (1.12) no cuadra con la suma de 3.8. Se guardará como está."
       );
     }
-
     await persistirPlaneacion(values, { finalizar: false });
   }
 
@@ -758,7 +649,6 @@ export default function PlaneacionForm({
     }
 
     let values = form.getValues();
-
     const prog = computeSectionProgress(values);
     setSectionProgress(prog);
 
@@ -786,8 +676,7 @@ export default function PlaneacionForm({
       changed = true;
     }
 
-    const totalHoras = values.horas_por_semestre?.total ?? 0;
-    if (totalHoras !== sumHoras) {
+    if ((values.horas_por_semestre?.total ?? 0) !== sumHoras) {
       toast.warning(
         "Se ajustó el total de horas (1.12) para que coincida con la suma de las unidades (3.8)."
       );
@@ -798,14 +687,10 @@ export default function PlaneacionForm({
       changed = true;
     }
 
-    if (changed) {
-      values = form.getValues();
-    }
+    if (changed) values = form.getValues();
 
     const ok = await persistirPlaneacion(values, { finalizar: true });
-    if (ok && onFinalizar) {
-      onFinalizar();
-    }
+    if (ok && onFinalizar) onFinalizar();
   }
 
   const goNext = () => {
@@ -817,9 +702,10 @@ export default function PlaneacionForm({
     if (idx > 0) setActiveTab(TABS[idx - 1]);
   };
 
-  // ─────────────────────────────
-  // Render
-  // ─────────────────────────────
+  // ✅ IMPORTANTE: auto + min-h-0 + flex-1 para que el scroll exista siempre
+  const tabBodyClass =
+    "flex-1 min-h-0 overflow-x-hidden overflow-y-auto w-full max-w-full [scrollbar-gutter:stable_both-edges]";
+
   return (
     <FormProvider {...form}>
       <form
@@ -827,21 +713,25 @@ export default function PlaneacionForm({
           e.preventDefault();
           guardarAvance();
         }}
-        className="grid h-full flex-1 min-h-0 gap-6 md:grid-cols-[1fr_320px]"
+        className="
+          grid h-full flex-1 min-h-0 gap-6 min-w-0
+          grid-cols-1
+          md:grid-cols-[minmax(0,1fr)_320px]
+        "
       >
-        {/* Columna izquierda: barra fija + contenido scrolleable por sección */}
-        <div className="flex flex-col h-full min-h-0">
+        {/* Columna izquierda (form) */}
+        <div className="flex flex-col h-full min-h-0 w-full max-w-full min-w-0">
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as TabKey)}
-            className="w-full flex-1 flex flex-col min-h-0"
+            className="w-full max-w-full flex-1 flex flex-col min-h-0 min-w-0"
           >
-            {/* 🔝 Barra superior fija dentro del scroll interno */}
-            <div className="sticky top-0 z-20 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-3 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex flex-col md:flex-row md:items-center md:gap-2">
-                  <h1 className="text-xl font-semibold">
-                    Planeación didáctica — {planeacionNombre}
+            {/* Header sticky */}
+            <div className="sticky top-0 z-20 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-3 space-y-3 w-full max-w-full min-w-0">
+              <div className="flex items-center justify-between gap-2 w-full max-w-full min-w-0">
+                <div className="flex flex-col md:flex-row md:items-center md:gap-2 min-w-0">
+                  <h1 className="text-xl font-semibold truncate">
+                    {planeacionNombre}
                   </h1>
                   <div className="flex flex-wrap items-center gap-2 mt-1 md:mt-0">
                     <Badge variant="secondary" className="w-fit">
@@ -854,6 +744,7 @@ export default function PlaneacionForm({
                     )}
                   </div>
                 </div>
+
                 <div className="flex flex-wrap gap-2 justify-end">
                   <Button
                     type="button"
@@ -889,78 +780,62 @@ export default function PlaneacionForm({
                 </div>
               </div>
 
-              {/* Tabs: 1–5 secciones */}
-             <TabsList
-              className="
-                w-full
-                overflow-x-auto
-                overflow-y-hidden      /* 👈 evita scroll vertical */
-                flex gap-2 p-2
-                bg-muted/30
-                rounded-lg
-              "
-            >
-              {[
-                { id: "datos", label: "Datos generales", num: 1 },
-                { id: "relaciones", label: "Relaciones y ejes", num: 2 },
-                { id: "organizacion", label: "Organización", num: 3 },
-                { id: "referencias", label: "Referencias", num: 4 },
-                { id: "plagio", label: "Plagio", num: 5 },
-              ].map((t) => (
-                <TabsTrigger
-                  key={t.id}
-                  value={t.id}
-                  className="
-                    group                         /* 👈 necesario */
-                    flex items-center gap-3
-                    px-4 py-2
-                    rounded-xl whitespace-nowrap
-                    text-sm font-medium
-                    transition-all duration-200
-
-                    data-[state=active]:bg-primary
-                    data-[state=active]:text-primary-foreground
-                    data-[state=active]:shadow-md
-                    data-[state=active]:scale-[1.02]
-
-                    hover:bg-primary/10
-                    hover:text-primary
-                  "
-                >
-                  <span
+              <TabsList
+                className="
+                  w-full max-w-full min-w-0
+                  overflow-x-auto md:overflow-x-hidden
+                  overflow-y-hidden
+                  flex gap-2 p-2
+                  bg-muted/30
+                  rounded-lg
+                "
+              >
+                {[
+                  { id: "datos", label: "Datos generales", num: 1 },
+                  { id: "relaciones", label: "Relaciones y ejes", num: 2 },
+                  { id: "organizacion", label: "Organización", num: 3 },
+                  { id: "referencias", label: "Referencias", num: 4 },
+                  { id: "plagio", label: "Plagio", num: 5 },
+                ].map((t) => (
+                  <TabsTrigger
+                    key={t.id}
+                    value={t.id}
                     className="
-                      flex items-center justify-center
-                      w-7 h-7 rounded-full 
-                      border border-foreground/20
-                      text-xs font-semibold
-                      bg-background
-                      transition-all duration-200
-
-                      /* ACTIVO — corregido */
-                      group-data-[state=active]:bg-primary-foreground/20
-                      group-data-[state=active]:text-primary-foreground
-                      group-data-[state=active]:border-transparent
+                      group flex items-center gap-3
+                      px-4 py-2 rounded-xl whitespace-nowrap
+                      text-sm font-medium transition-all duration-200
+                      data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                      data-[state=active]:shadow-md data-[state=active]:scale-[1.02]
+                      hover:bg-primary/10 hover:text-primary
                     "
                   >
-                    {t.num}
-                  </span>
-
-                  {t.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-
+                    <span
+                      className="
+                        flex items-center justify-center
+                        w-7 h-7 rounded-full
+                        border border-foreground/20 text-xs font-semibold
+                        bg-background transition-all duration-200
+                        group-data-[state=active]:bg-primary-foreground/20
+                        group-data-[state=active]:text-primary-foreground
+                        group-data-[state=active]:border-transparent
+                      "
+                    >
+                      {t.num}
+                    </span>
+                    {t.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
             </div>
 
-            {/* DATOS GENERALES */}
+            {/* ✅ Clave: TabsContent también debe ser flex-col min-h-0 */}
             <TabsContent
               value="datos"
               forceMount
-              className="mt-4 flex-1 min-h-0 flex flex-col"
+              className="mt-4 flex-1 min-h-0 w-full max-w-full overflow-hidden flex flex-col"
             >
-              <ScrollArea className="flex-1 max-h-full pr-2">
-                <div className="pb-24">
+              <div className={tabBodyClass}>
+                <div className="pb-24 w-full max-w-full min-w-0">
                   <DatosGenerales
                     unidades={unidades}
                     loading={uLoading}
@@ -968,35 +843,33 @@ export default function PlaneacionForm({
                     readOnly={readOnly}
                   />
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
-            {/* RELACIONES Y EJES */}
             <TabsContent
               value="relaciones"
               forceMount
-              className="mt-4 flex-1 min-h-0 flex flex-col"
+              className="mt-4 flex-1 min-h-0 w-full max-w-full overflow-hidden flex flex-col"
             >
-              <ScrollArea className="flex-1 max-h-full pr-2">
-                <div className="pb-24">
+              <div className={tabBodyClass}>
+                <div className="pb-24 w-full max-w-full min-w-0">
                   <RelacionesEjes readOnly={readOnly} />
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
-            {/* ORGANIZACIÓN DIDÁCTICA */}
             <TabsContent
               value="organizacion"
               forceMount
-              className="mt-4 flex-1 min-h-0 flex flex-col"
+              className="mt-4 flex-1 min-h-0 w-full max-w-full overflow-hidden flex flex-col"
             >
-              <ScrollArea className="flex-1 max-h-full pr-2">
-                <div className="space-y-4 pb-24">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">
+              <div className={tabBodyClass}>
+                <div className="space-y-4 pb-24 w-full max-w-full min-w-0">
+                  <div className="flex items-center justify-between min-w-0 gap-3">
+                    <h2 className="text-lg font-semibold truncate">
                       3. Organización didáctica
                     </h2>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground shrink-0">
                       Total sesiones: <b>{sumSesiones}</b> &nbsp;|&nbsp; Total
                       horas: <b>{sumHoras}</b>
                     </div>
@@ -1010,11 +883,11 @@ export default function PlaneacionForm({
                         className="border rounded-lg px-3"
                       >
                         <AccordionTrigger className="text-left">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-medium truncate">
                               Unidad temática {idx + 1}
                             </span>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-muted-foreground shrink-0">
                               ({uts?.[idx]?.sesiones_totales ?? 0} sesiones,{" "}
                               {Object.values(uts?.[idx]?.horas ?? {}).reduce(
                                 (a, b) => a + (b || 0),
@@ -1041,7 +914,7 @@ export default function PlaneacionForm({
                     ))}
                   </Accordion>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 min-w-0">
                     <Button
                       type="button"
                       variant="outline"
@@ -1050,13 +923,13 @@ export default function PlaneacionForm({
                         if (lastIdx >= 0) {
                           const ok = await trigger(
                             `unidades_tematicas.${lastIdx}` as any,
-                            {
-                              shouldFocus: true,
-                            }
+                            { shouldFocus: true }
                           );
                           if (!ok) {
                             toast.error(
-                              `Completa la Unidad Temática ${lastIdx + 1} antes de crear otra.`
+                              `Completa la Unidad Temática ${
+                                lastIdx + 1
+                              } antes de crear otra.`
                             );
                             return;
                           }
@@ -1067,20 +940,8 @@ export default function PlaneacionForm({
                           nombre_unidad_tematica: "",
                           unidad_competencia: "",
                           periodo_desarrollo: { del: "", al: "" },
-                          horas: {
-                            aula: 0,
-                            laboratorio: 0,
-                            taller: 0,
-                            clinica: 0,
-                            otro: 0,
-                          },
-                          sesiones_por_espacio: {
-                            aula: 0,
-                            laboratorio: 0,
-                            taller: 0,
-                            clinica: 0,
-                            otro: 0,
-                          },
+                          horas: { aula: 0, laboratorio: 0, taller: 0, clinica: 0, otro: 0 },
+                          sesiones_por_espacio: { aula: 0, laboratorio: 0, taller: 0, clinica: 0, otro: 0 },
                           sesiones_totales: 0,
                           periodo_registro_eval: "",
                           aprendizajes_esperados: [""],
@@ -1088,11 +949,7 @@ export default function PlaneacionForm({
                             {
                               numero_sesion: 1,
                               temas_subtemas: "",
-                              actividades: {
-                                inicio: "",
-                                desarrollo: "",
-                                cierre: "",
-                              },
+                              actividades: { inicio: "", desarrollo: "", cierre: "" },
                               recursos: [""],
                               evidencias: [""],
                               valor_porcentual: 0,
@@ -1107,15 +964,15 @@ export default function PlaneacionForm({
                       Agregar Unidad Temática
                     </Button>
 
-                    <div className="ml-auto flex items-center gap-2 text-sm">
-                      <span>sesiones por semestre:</span>
+                    <div className="ml-auto flex items-center gap-2 text-sm min-w-0">
+                      <span className="shrink-0">sesiones por semestre:</span>
                       <Input
                         className="w-24 h-9"
                         type="number"
                         value={sesionesPorSemestre ?? 0}
                         readOnly
                       />
-                      <span>total horas:</span>
+                      <span className="shrink-0">total horas:</span>
                       <Input
                         className="w-24 h-9"
                         type="number"
@@ -1126,41 +983,38 @@ export default function PlaneacionForm({
                     </div>
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
-            {/* REFERENCIAS */}
             <TabsContent
               value="referencias"
               forceMount
-              className="mt-4 flex-1 min-h-0 flex flex-col"
+              className="mt-4 flex-1 min-h-0 w-full max-w-full overflow-hidden flex flex-col"
             >
-              <ScrollArea className="flex-1 max-h-full pr-2">
-                <div className="pb-24">
+              <div className={tabBodyClass}>
+                <div className="pb-24 w-full max-w-full min-w-0 overflow-x-hidden">
                   <Referencias
                     unidadesCount={unidadesCount}
                     readOnly={readOnly}
                   />
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
-            {/* PLAGIO */}
             <TabsContent
               value="plagio"
               forceMount
-              className="mt-4 flex-1 min-h-0 flex flex-col"
+              className="mt-4 flex-1 min-h-0 w-full max-w-full overflow-hidden flex flex-col"
             >
-              <ScrollArea className="flex-1 max-h-full pr-2">
-                <div className="pb-24">
+              <div className={tabBodyClass}>
+                <div className="pb-24 w-full max-w-full min-w-0 overflow-x-hidden">
                   <Plagio readOnly={readOnly} />
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
 
-        {/* Columna derecha: Avance por sección */}
         <PlaneacionAside sectionProgress={sectionProgress} />
       </form>
     </FormProvider>
