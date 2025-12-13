@@ -416,6 +416,9 @@ export default function PlaneacionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planeacionId, token]);
 
+  // ✅ Debe ir antes de usarlo en botones/funciones
+  const hasPlaneacionContext = !!planeacionId || !!initialNombrePlaneacion;
+
   function buildPayload(values: PlaneacionType, opts?: { finalizar?: boolean }) {
     const payload: any = {
       nombre_planeacion: planeacionNombre || null,
@@ -558,7 +561,10 @@ export default function PlaneacionForm({
     return payload;
   }
 
-  async function persistirPlaneacion(values: PlaneacionType, opts?: { finalizar?: boolean }) {
+  async function persistirPlaneacion(
+    values: PlaneacionType,
+    opts?: { finalizar?: boolean }
+  ) {
     if (readOnly) {
       toast.info("Planeación finalizada: solo lectura, no se puede guardar.");
       return false;
@@ -612,6 +618,7 @@ export default function PlaneacionForm({
           ? "Avance guardado correctamente."
           : "Planeación guardada correctamente."
       );
+
       return true;
     } catch (err: any) {
       console.error(err);
@@ -620,49 +627,50 @@ export default function PlaneacionForm({
     }
   }
 
-    async function guardarAvance() {
-      if (!hasPlaneacionContext) {
-        toast.info("Primero crea o selecciona una planeación para guardar.");
-        return;
-      }
-      if (readOnly) {
-        toast.info("Esta planeación está finalizada. Solo lectura.");
-        return;
-      }
-
-      const values = form.getValues();
-      const prog = computeSectionProgress(values);
-      setSectionProgress(prog);
-
-      await persistirPlaneacion(values, { finalizar: false });
+  async function guardarAvance() {
+    if (!hasPlaneacionContext) {
+      toast.info("Primero crea o selecciona una planeación para guardar.");
+      return;
+    }
+    if (readOnly) {
+      toast.info("Esta planeación está finalizada. Solo lectura.");
+      return;
     }
 
+    const values = form.getValues();
+    const prog = computeSectionProgress(values);
+    setSectionProgress(prog);
 
-    async function finalizarPlaneacion() {
-      if (!hasPlaneacionContext) {
-        toast.info("Primero crea o selecciona una planeación para finalizar.");
-        return;
-      }
-      if (readOnly) {
-        toast.info("Esta planeación ya está finalizada (solo lectura).");
-        return;
-      }
+    const ok = await persistirPlaneacion(values, { finalizar: false });
 
-      let values = form.getValues();
-      const prog = computeSectionProgress(values);
-      setSectionProgress(prog);
+    // ✅ CLAVE: refrescar lista también al guardar avance
+    if (ok && onFinalizar) onFinalizar();
+  }
 
-      const entries = Object.entries(prog) as [SectionKey, SectionProgress][];
-      const firstIncomplete = entries.find(
-        ([, sec]) => (sec.missing?.length ?? 0) > 0
-      );
+  async function finalizarPlaneacion() {
+    if (!hasPlaneacionContext) {
+      toast.info("Primero crea o selecciona una planeación para finalizar.");
+      return;
+    }
+    if (readOnly) {
+      toast.info("Esta planeación ya está finalizada (solo lectura).");
+      return;
+    }
 
-      if (firstIncomplete) {
-        toast.error("Revisa los campos requeridos antes de finalizar.");
-        setActiveTab(firstIncomplete[0]);
-        return;
-      }
+    let values = form.getValues();
+    const prog = computeSectionProgress(values);
+    setSectionProgress(prog);
 
+    const entries = Object.entries(prog) as [SectionKey, SectionProgress][];
+    const firstIncomplete = entries.find(
+      ([, sec]) => (sec.missing?.length ?? 0) > 0
+    );
+
+    if (firstIncomplete) {
+      toast.error("Revisa los campos requeridos antes de finalizar.");
+      setActiveTab(firstIncomplete[0]);
+      return;
+    }
 
     let changed = false;
 
@@ -703,12 +711,8 @@ export default function PlaneacionForm({
     if (idx > 0) setActiveTab(TABS[idx - 1]);
   };
 
-  // ✅ IMPORTANTE: auto + min-h-0 + flex-1 para que el scroll exista siempre
   const tabBodyClass =
     "flex-1 min-h-0 overflow-x-hidden overflow-y-auto w-full max-w-full [scrollbar-gutter:stable_both-edges]";
-
-  const hasPlaneacionContext = !!planeacionId || !!initialNombrePlaneacion;
-
 
   return (
     <FormProvider {...form}>
@@ -723,14 +727,12 @@ export default function PlaneacionForm({
           md:grid-cols-[minmax(0,1fr)_320px]
         "
       >
-        {/* Columna izquierda (form) */}
         <div className="flex flex-col h-full min-h-0 w-full max-w-full min-w-0">
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as TabKey)}
             className="w-full max-w-full flex-1 flex flex-col min-h-0 min-w-0"
           >
-            {/* Header sticky */}
             <div className="sticky top-0 z-20 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-3 space-y-3 w-full max-w-full min-w-0">
               <div className="flex items-center justify-between gap-2 w-full max-w-full min-w-0">
                 <div className="flex flex-col md:flex-row md:items-center md:gap-2 min-w-0">
@@ -749,8 +751,7 @@ export default function PlaneacionForm({
                   </div>
                 </div>
 
-               <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-                  {/* Navegación */}
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
                   <Button
                     type="button"
                     variant="ghost"
@@ -781,15 +782,13 @@ export default function PlaneacionForm({
                     Siguiente →
                   </Button>
 
-                  {/* Separador visual */}
                   <span className="mx-1 h-6 w-px bg-border" />
 
-                  {/* Guardar */}
                   <Button
                     type="button"
                     variant="outline"
                     onClick={guardarAvance}
-                    disabled={isSubmitting || readOnly}
+                    disabled={!hasPlaneacionContext || isSubmitting || readOnly}
                     className="
                       border-primary/30
                       text-primary
@@ -801,11 +800,10 @@ export default function PlaneacionForm({
                     {isSubmitting ? "Guardando…" : "Guardar avance"}
                   </Button>
 
-                  {/* Acción principal */}
                   <Button
                     type="button"
                     onClick={finalizarPlaneacion}
-                    disabled={isSubmitting || readOnly}
+                    disabled={!hasPlaneacionContext || isSubmitting || readOnly}
                     className="
                       px-5
                       font-semibold
@@ -833,83 +831,78 @@ export default function PlaneacionForm({
                 "
               >
                 {[
-                { id: "datos", label: "Datos generales", num: 1 },
-                { id: "relaciones", label: "Relaciones y ejes", num: 2 },
-                { id: "organizacion", label: "Organización", num: 3 },
-                { id: "referencias", label: "Referencias", num: 4 },
-                { id: "plagio", label: "Plagio", num: 5 },
-              ].map((t) => (
-                <TabsTrigger
-                  key={t.id}
-                  value={t.id}
-                  className="
-                    group relative
-                    flex items-center gap-3
-                    px-4 py-2
-                    rounded-xl
-                    whitespace-nowrap
-                    text-sm font-medium
-                    transition-all duration-300 ease-out
-
-                    text-muted-foreground
-                    hover:text-foreground
-                    hover:bg-background/70
-                    hover:shadow-sm
-
-                    data-[state=active]:bg-background
-                    data-[state=active]:text-foreground
-                    data-[state=active]:shadow-md
-                    data-[state=active]:ring-1
-                    data-[state=active]:ring-primary/30
-                  "
-                >
-                  {/* Número */}
-                  <span
+                  { id: "datos", label: "Datos generales", num: 1 },
+                  { id: "relaciones", label: "Relaciones y ejes", num: 2 },
+                  { id: "organizacion", label: "Organización", num: 3 },
+                  { id: "referencias", label: "Referencias", num: 4 },
+                  { id: "plagio", label: "Plagio", num: 5 },
+                ].map((t) => (
+                  <TabsTrigger
+                    key={t.id}
+                    value={t.id}
                     className="
-                      flex items-center justify-center
-                      w-7 h-7 rounded-full
-                      text-xs font-semibold
-                      border
-                      border-border/60
-                      bg-background
+                      group relative
+                      flex items-center gap-3
+                      px-4 py-2
+                      rounded-xl
+                      whitespace-nowrap
+                      text-sm font-medium
+                      transition-all duration-300 ease-out
+
                       text-muted-foreground
-                      transition-all duration-300
+                      hover:text-foreground
+                      hover:bg-background/70
+                      hover:shadow-sm
 
-                      group-hover:bg-primary/10
-                      group-hover:text-primary
-                      group-hover:border-primary/30
-
-                      group-data-[state=active]:bg-primary
-                      group-data-[state=active]:text-primary-foreground
-                      group-data-[state=active]:border-primary
+                      data-[state=active]:bg-background
+                      data-[state=active]:text-foreground
+                      data-[state=active]:shadow-md
+                      data-[state=active]:ring-1
+                      data-[state=active]:ring-primary/30
                     "
                   >
-                    {t.num}
-                  </span>
-
-                  {/* Label */}
-                  <span className="relative">
-                    {t.label}
-
-                    {/* underline animado */}
                     <span
                       className="
-                        pointer-events-none
-                        absolute -bottom-1 left-0 h-[2px] w-full
-                        origin-left scale-x-0
-                        bg-primary
-                        transition-transform duration-300
-                        group-hover:scale-x-100
-                        group-data-[state=active]:scale-x-100
+                        flex items-center justify-center
+                        w-7 h-7 rounded-full
+                        text-xs font-semibold
+                        border
+                        border-border/60
+                        bg-background
+                        text-muted-foreground
+                        transition-all duration-300
+
+                        group-hover:bg-primary/10
+                        group-hover:text-primary
+                        group-hover:border-primary/30
+
+                        group-data-[state=active]:bg-primary
+                        group-data-[state=active]:text-primary-foreground
+                        group-data-[state=active]:border-primary
                       "
-                    />
-                  </span>
-                </TabsTrigger>
-              ))}
+                    >
+                      {t.num}
+                    </span>
+
+                    <span className="relative">
+                      {t.label}
+                      <span
+                        className="
+                          pointer-events-none
+                          absolute -bottom-1 left-0 h-[2px] w-full
+                          origin-left scale-x-0
+                          bg-primary
+                          transition-transform duration-300
+                          group-hover:scale-x-100
+                          group-data-[state=active]:scale-x-100
+                        "
+                      />
+                    </span>
+                  </TabsTrigger>
+                ))}
               </TabsList>
             </div>
 
-            {/* ✅ Clave: TabsContent también debe ser flex-col min-h-0 */}
             <TabsContent
               value="datos"
               forceMount
