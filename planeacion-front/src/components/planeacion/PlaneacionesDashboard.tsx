@@ -18,6 +18,18 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Trash2 } from "lucide-react";
+
 
 const API_BASE = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
@@ -41,44 +53,37 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedReadOnly, setSelectedReadOnly] = useState(false);
 
   const [formKey, setFormKey] = useState(0);
-  const [initialNombrePlaneacion, setInitialNombrePlaneacion] = useState<
-    string | undefined
-  >(undefined);
-
-  const [selectedReadOnly, setSelectedReadOnly] = useState(false);
+  const [initialNombrePlaneacion, setInitialNombrePlaneacion] =
+    useState<string>();
 
   const [showNuevaDialog, setShowNuevaDialog] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState("");
+
+  const [confirmDelete, setConfirmDelete] = useState<{
+    id: number;
+    nombre: string;
+  } | null>(null);
 
   async function loadPlaneaciones() {
     try {
       setLoading(true);
       setError(null);
       const res = await fetch(`${API_BASE}/planeaciones`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
-      if (!res.ok) {
+      if (!res.ok)
         throw new Error(
           `No se pudieron cargar las planeaciones (${res.status})`
         );
-      }
 
       const data = await res.json();
-      const items: PlaneacionResumen[] = Array.isArray(data?.items)
-        ? data.items
-        : Array.isArray(data)
-        ? data
-        : [];
-
-      setPlaneaciones(items);
+      setPlaneaciones(Array.isArray(data?.items) ? data.items : data);
     } catch (err: any) {
-      console.error(err);
-      setError(err?.message || "Error cargando planeaciones");
+      setError(err?.message);
       toast.error(err?.message || "Error cargando planeaciones");
     } finally {
       setLoading(false);
@@ -101,17 +106,14 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
       return;
     }
 
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("planeacion_actual_id");
-    }
+    localStorage.removeItem("planeacion_actual_id");
 
     setSelectedId(null);
     setSelectedReadOnly(false);
-
     setInitialNombrePlaneacion(nombre);
     setFormKey((k) => k + 1);
-
     setShowNuevaDialog(false);
+
     toast.info(`Nueva planeación: "${nombre}"`);
   }
 
@@ -122,100 +124,60 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
     const isFinal = pl.status === "finalizada";
 
     setSelectedId(id);
-    setInitialNombrePlaneacion(undefined);
     setSelectedReadOnly(isFinal);
+    setInitialNombrePlaneacion(undefined);
     setFormKey((k) => k + 1);
 
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("planeacion_actual_id", String(id));
-    }
-
-    if (isFinal) {
-      toast.info(
-        `Planeación finalizada (solo lectura): ${
-          pl.nombre_planeacion || `Planeación #${id}`
-        }`
-      );
-    } else {
-      toast.info(
-        `Editando planeación didáctica: ${
-          pl.nombre_planeacion || `Planeación #${id}`
-        }`
-      );
-    }
+    localStorage.setItem("planeacion_actual_id", String(id));
   }
 
-  async function handleRefrescar() {
-    await loadPlaneaciones();
-  }
-
-  async function handleFinalizarDesdeForm() {
-    await loadPlaneaciones();
-    setSelectedReadOnly(true);
-    setInitialNombrePlaneacion(undefined);
-  }
-
-  async function handleEliminarSeleccionada() {
+  function handleEliminarSeleccionada() {
     if (!selectedId) {
       toast.error("Selecciona una planeación para eliminar.");
       return;
     }
 
     const pl = planeaciones.find((p) => p.id === selectedId);
-    const nombre = pl?.nombre_planeacion || `Planeación #${selectedId}`;
+    setConfirmDelete({
+      id: selectedId,
+      nombre: pl?.nombre_planeacion || `Planeación #${selectedId}`,
+    });
+  }
 
-    if (typeof window !== "undefined") {
-      const ok = window.confirm(
-        `¿Seguro que deseas eliminar "${nombre}"?\nEsta acción no se puede deshacer.`
-      );
-      if (!ok) return;
-    }
+  async function confirmarEliminarPlaneacion() {
+    if (!confirmDelete) return;
 
     try {
-      const res = await fetch(`${API_BASE}/planeaciones/${selectedId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        let msg = `No se pudo eliminar la planeación (${res.status})`;
-        try {
-          const data = await res.json();
-          msg = data?.error || data?.msg || msg;
-        } catch {
-          //
+      const res = await fetch(
+        `${API_BASE}/planeaciones/${confirmDelete.id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
         }
-        toast.error(msg);
-        return;
-      }
+      );
 
-      toast.success(`Planeación eliminada: "${nombre}"`);
+      if (!res.ok) throw new Error("No se pudo eliminar la planeación");
 
-      if (typeof window !== "undefined") {
-        const stored = window.localStorage.getItem("planeacion_actual_id");
-        if (stored === String(selectedId)) {
-          window.localStorage.removeItem("planeacion_actual_id");
-        }
-      }
+      toast.success(`Planeación eliminada: "${confirmDelete.nombre}"`);
+
+      localStorage.removeItem("planeacion_actual_id");
 
       setSelectedId(null);
       setSelectedReadOnly(false);
       setInitialNombrePlaneacion(undefined);
       setFormKey((k) => k + 1);
+
       await loadPlaneaciones();
     } catch (err: any) {
-      console.error(err);
       toast.error(err?.message || "Error al eliminar la planeación");
+    } finally {
+      setConfirmDelete(null);
     }
   }
 
   function formatDate(dateStr?: string) {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleString("es-MX", {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleString("es-MX", {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -223,204 +185,140 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
 
   return (
     <>
-      <div className="flex flex-col gap-4 h-full min-h-0 min-w-0">
-        <div className="flex items-center justify-between flex-wrap gap-2 min-w-0">
-          <div className="flex flex-col min-w-0">
-            <h1 className="text-2xl font-semibold">Planeación didáctica</h1>
-            <p className="text-sm text-muted-foreground">
-              Gestiona tus planeaciones y edítalas en un solo lugar.
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleRefrescar}
-              disabled={loading}
+      {/* ===== HEADER ===== */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Planeación didáctica</h1>
+        <div className="flex gap-2">
+           <Button
+              onClick={handleNuevaPlaneacion}
+              className="
+                h-10 px-4 rounded-xl
+                shadow-sm hover:shadow-md
+                transition-all duration-200
+                hover:-translate-y-[1px]
+                active:translate-y-0
+                focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2
+              "
             >
-              {loading ? "Actualizando…" : "Actualizar lista"}
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva planeación
             </Button>
+
+            {/* Eliminar (destructive pro) */}
             <Button
-              type="button"
               variant="destructive"
               onClick={handleEliminarSeleccionada}
               disabled={!selectedId}
+              className="
+                h-10 px-4 rounded-xl
+                shadow-sm hover:shadow-md
+                transition-all duration-200
+                hover:-translate-y-[1px]
+                active:translate-y-0
+                disabled:opacity-50 disabled:shadow-none disabled:translate-y-0
+                focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:ring-offset-2
+              "
             >
+              <Trash2 className="mr-2 h-4 w-4" />
               Eliminar
             </Button>
-            <Button type="button" onClick={handleNuevaPlaneacion}>
-              Nueva planeación
-            </Button>
-          </div>
-        </div>
-
-        {/* ✅ clave: items-stretch + min-h-0 para que ambos hijos tengan mismo alto */}
-        <div className="flex flex-col lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch gap-4 h-[calc(100vh-136px)] min-h-0 overflow-hidden min-w-0">
-          {/* ✅ clave: h-full + min-h-0 + overflow-hidden para que ScrollArea mande */}
-          <Card
-            className="
-              w-full lg:w-[320px] lg:shrink-0
-              p-4 flex flex-col gap-3
-              h-full min-h-0 overflow-hidden
-              lg:sticky lg:top-[5.5rem]
-              min-w-0
-            "
-          >
-            <div className="flex items-center justify-between min-w-0">
-              <h2 className="font-semibold text-sm md:text-base">
-                Mis planeaciones
-              </h2>
-              <span className="text-xs text-muted-foreground shrink-0">
-                {planeaciones.length} registro
-                {planeaciones.length === 1 ? "" : "s"}
-              </span>
-            </div>
-
-            <Separator />
-
-            {error && <p className="text-xs text-destructive">{error}</p>}
-
-            {/* ✅ clave: min-h-0 + h-full para que sí aparezca scroll interno */}
-            <ScrollArea className="flex-1 min-h-0 h-full">
-              <div className="space-y-3 pr-2">
-                {initialNombrePlaneacion && selectedId === null && (
-                  <div className="w-full rounded-lg border border-dashed bg-muted/50 px-3 py-2 text-xs">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex flex-col">
-                        <span className="font-medium">Nueva planeación</span>
-                        <span className="text-[11px] text-muted-foreground truncate">
-                          {initialNombrePlaneacion}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          (Sin guardar aún)
-                        </span>
-                      </div>
-                      <div className="pt-1">
-                        <Badge
-                          variant="outline"
-                          className="shrink-0 text-[10px]"
-                        >
-                          Borrador
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {planeaciones.length === 0 && !loading && (
-                  <p className="text-xs text-muted-foreground">
-                    Aún no tienes planeaciones. Crea una nueva usando el botón
-                    <span className="font-medium"> “Nueva planeación”</span>.
-                  </p>
-                )}
-
-                {planeaciones.map((p) => {
-                  const isSelected = p.id === selectedId;
-                  const status = (p.status || "borrador") as PlaneacionStatus;
-
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleEditar(p.id)}
-                      className={`w-full text-left rounded-lg border px-3 py-2 text-sm transition-colors ${
-                        status === "finalizada"
-                          ? isSelected
-                            ? "border-primary bg-primary/5 opacity-80"
-                            : "opacity-70 hover:bg-muted/60"
-                          : isSelected
-                          ? "border-primary bg-primary/5"
-                          : "hover:bg-muted"
-                      }`}
-                    >
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-medium truncate">
-                            {p.nombre_planeacion || `Planeación #${p.id}`}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            Creada: {formatDate(p.created_at) || "—"}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            Última actualización:{" "}
-                            {formatDate(p.updated_at) || "—"}
-                          </span>
-                        </div>
-
-                        <div className="pt-1">
-                          <Badge
-                            variant={
-                              status === "finalizada" ? "default" : "outline"
-                            }
-                            className="text-[10px]"
-                          >
-                            {status === "finalizada" ? "Finalizada" : "Borrador"}
-                          </Badge>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </Card>
-
-          {/* ✅ también h-full/min-h-0 para que cuadre con la izquierda */}
-          <Card className="w-full lg:flex-1 p-4 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
-            <PlaneacionForm
-              key={formKey}
-              token={token}
-              planeacionId={selectedId}
-              initialNombrePlaneacion={initialNombrePlaneacion}
-              readOnly={selectedReadOnly}
-              onFinalizar={handleFinalizarDesdeForm}
-            />
-          </Card>
         </div>
       </div>
 
+      {/* ===== CONTENIDO ===== */}
+      <div className="grid lg:grid-cols-[320px_1fr] gap-4 h-[calc(100vh-136px)]">
+        <Card className="p-4 flex flex-col overflow-hidden">
+          <h2 className="font-semibold mb-2">Mis planeaciones</h2>
+          <Separator />
+          <ScrollArea className="flex-1 mt-3 pr-2">
+            <div className="space-y-3">
+              {planeaciones.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => handleEditar(p.id)}
+                  className={`w-full rounded-lg border px-3 py-2 text-left ${
+                    p.id === selectedId
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  <span className="font-medium line-clamp-2">
+                    {p.nombre_planeacion}
+                  </span>
+                  <div className="text-xs text-muted-foreground">
+                    Creada: {formatDate(p.created_at)}
+                  </div>
+                  <Badge className="mt-1" variant="outline">
+                    {p.status || "borrador"}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </Card>
+
+        <Card className="p-4 overflow-hidden">
+          <PlaneacionForm
+            key={formKey}
+            token={token}
+            planeacionId={selectedId}
+            initialNombrePlaneacion={initialNombrePlaneacion}
+            readOnly={selectedReadOnly}
+            onFinalizar={loadPlaneaciones}
+          />
+        </Card>
+      </div>
+
+      {/* ===== DIALOG NUEVA ===== */}
       <Dialog open={showNuevaDialog} onOpenChange={setShowNuevaDialog}>
         <DialogContent>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              confirmarNuevaPlaneacion();
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>Nueva planeación</DialogTitle>
-              <DialogDescription>
-                Escribe el nombre con el que deseas identificar esta planeación
-                didáctica.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-4 space-y-2">
-              <label className="text-sm font-medium">
-                Nombre de la planeación
-              </label>
-              <Input
-                autoFocus
-                placeholder="Ej. Planeación cálculo diferencial grupo 1CV1"
-                value={nuevoNombre}
-                onChange={(e) => setNuevoNombre(e.target.value)}
-              />
-            </div>
-
-            <DialogFooter className="mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowNuevaDialog(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit">Crear</Button>
-            </DialogFooter>
-          </form>
+          <DialogHeader>
+            <DialogTitle>Nueva planeación</DialogTitle>
+            <DialogDescription>
+              Escribe el nombre de la planeación.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={nuevoNombre}
+            onChange={(e) => setNuevoNombre(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNuevaDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarNuevaPlaneacion}>Crear</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ===== ALERT ELIMINAR ===== */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(o) => !o && setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar planeación</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Seguro que deseas eliminar{" "}
+              <strong>{confirmDelete?.nombre}</strong>?<br />
+              <span className="text-destructive">
+                Esta acción no se puede deshacer.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={confirmarEliminarPlaneacion}
+            >
+              Eliminar definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

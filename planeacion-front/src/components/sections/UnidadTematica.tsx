@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import {
+  Controller,
+  useFieldArray,
+  useFormContext,
+  useWatch,
+} from "react-hook-form";
 import { PlaneacionType } from "../schema";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +25,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+
 type Props = { index: number; onRemove?: () => void; readOnly?: boolean };
 
 // Helper seguro para leer errores anidados
@@ -33,6 +49,14 @@ const getErrMsg = (obj: any, path: string[]): string | undefined => {
     return undefined;
   }
 };
+
+function ymdFromDate(d?: Date) {
+  return d ? d.toISOString().slice(0, 10) : "";
+}
+function parseYmdToLocalDate(v?: string) {
+  // evita desfase por timezone en Date("YYYY-MM-DD")
+  return v && String(v).trim() ? new Date(`${v}T00:00:00`) : undefined;
+}
 
 // ---------- Item de bloque (sesión) ----------
 function BloqueItem({
@@ -246,7 +270,11 @@ function BloqueItem({
 }
 
 // ---------- Componente principal (Unidad Temática) ----------
-export default function UnidadTematica({ index, onRemove, readOnly = false }: Props) {
+export default function UnidadTematica({
+  index,
+  onRemove,
+  readOnly = false,
+}: Props) {
   const name = `unidades_tematicas.${index}` as const;
 
   const {
@@ -365,8 +393,8 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
   }) as string | undefined;
 
   useEffect(() => {
-    const a = devDel ? new Date(devDel) : null;
-    const b = devAl ? new Date(devAl) : null;
+    const a = devDel ? new Date(`${devDel}T00:00:00`) : null;
+    const b = devAl ? new Date(`${devAl}T00:00:00`) : null;
     if (a && b && a > b) {
       setError(`${name}.periodo_desarrollo.del` as any, {
         type: "manual",
@@ -464,9 +492,10 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
         )}
       </div>
 
-      {/* Nombre y objetivo */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <div>
+      {/* Nombre, objetivo y periodo – misma fila (desktop) */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+        {/* Nombre */}
+        <div className="md:col-span-1 min-w-0">
           <Label>Nombre de la unidad temática</Label>
           <Input
             placeholder="Ej. Fundamentos de programación"
@@ -475,35 +504,107 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
           />
         </div>
 
-        <div>
+        {/* Objetivo */}
+        <div className="md:col-span-2 min-w-0">
           <Label>Unidad de competencia u objetivo</Label>
           <Textarea
             rows={2}
+            className="w-full"
             placeholder="Redacción clara (verbo–objeto–condición de calidad)…"
-            {...register(`${name}.unidad_competencia`)}
+            {...register(`${name}.unidad_competencia` as const)}
             readOnly={readOnly}
           />
         </div>
-      </div>
 
-      {/* Periodo de desarrollo (una fila abajo) */}
-      <div>
-        <Label>Periodo de desarrollo</Label>
-        <div className="flex gap-2">
-          <Input
-            type="date"
-            {...register(`${name}.periodo_desarrollo.del`)}
-            readOnly={readOnly}
-          />
-          <Input
-            type="date"
-            {...register(`${name}.periodo_desarrollo.al`)}
-            readOnly={readOnly}
-          />
+        {/* Periodo (Calendario shadcn) */}
+        <div className="md:col-span-1 min-w-0">
+          <Label>Periodo de desarrollo</Label>
+
+          <div className="grid grid-cols-2 gap-2">
+            {/* DEL */}
+            <Controller
+              control={control}
+              name={`${name}.periodo_desarrollo.del` as const}
+              render={({ field }) => {
+                const selected = parseYmdToLocalDate(field.value);
+
+                return (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={readOnly}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selected && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selected
+                          ? format(selected, "dd/MM/yyyy", { locale: es })
+                          : "Del"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selected}
+                        onSelect={(d) => field.onChange(ymdFromDate(d))}
+                        initialFocus
+                        locale={es}
+                        weekStartsOn={1}
+                      />
+
+                    </PopoverContent>
+                  </Popover>
+                );
+              }}
+            />
+
+            {/* AL */}
+            <Controller
+              control={control}
+              name={`${name}.periodo_desarrollo.al` as const}
+              render={({ field }) => {
+                const selected = parseYmdToLocalDate(field.value);
+
+                return (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={readOnly}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selected && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selected
+                          ? format(selected, "dd/MM/yyyy", { locale: es })
+                          : "Al"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selected}
+                        onSelect={(d) => field.onChange(ymdFromDate(d))}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                );
+              }}
+            />
+          </div>
+
+          {errPeriodoDev && (
+            <p className="text-xs text-destructive mt-1">{errPeriodoDev}</p>
+          )}
         </div>
-        {errPeriodoDev && (
-          <p className="text-xs text-destructive mt-1">{errPeriodoDev}</p>
-        )}
       </div>
 
       {/* Horas */}
@@ -585,46 +686,41 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
             <Input
               type="number"
               min={0}
-              {...register(
-                `${name}.sesiones_por_espacio.aula` as any,
-                { valueAsNumber: true }
-              )}
+              {...register(`${name}.sesiones_por_espacio.aula` as any, {
+                valueAsNumber: true,
+              })}
               readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
-              {...register(
-                `${name}.sesiones_por_espacio.laboratorio` as any,
-                { valueAsNumber: true }
-              )}
+              {...register(`${name}.sesiones_por_espacio.laboratorio` as any, {
+                valueAsNumber: true,
+              })}
               readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
-              {...register(
-                `${name}.sesiones_por_espacio.taller` as any,
-                { valueAsNumber: true }
-              )}
+              {...register(`${name}.sesiones_por_espacio.taller` as any, {
+                valueAsNumber: true,
+              })}
               readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
-              {...register(
-                `${name}.sesiones_por_espacio.clinica` as any,
-                { valueAsNumber: true }
-              )}
+              {...register(`${name}.sesiones_por_espacio.clinica` as any, {
+                valueAsNumber: true,
+              })}
               readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
-              {...register(
-                `${name}.sesiones_por_espacio.otro` as any,
-                { valueAsNumber: true }
-              )}
+              {...register(`${name}.sesiones_por_espacio.otro` as any, {
+                valueAsNumber: true,
+              })}
               readOnly={readOnly}
             />
             <Input type="number" value={totalSesiones} readOnly tabIndex={-1} />
@@ -659,9 +755,7 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
               <Input
                 className="flex-1"
                 placeholder={`Aprendizaje ${i + 1}`}
-                {...register(
-                  `${name}.aprendizajes_esperados.${i}` as const
-                )}
+                {...register(`${name}.aprendizajes_esperados.${i}` as const)}
                 readOnly={readOnly}
               />
               <Button
@@ -689,9 +783,7 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
       <div>
         <div className="flex items-end justify-between">
           <Label>Sesiones (bloques)</Label>
-          {errPct && (
-            <p className="text-xs text-destructive">{errPct}</p>
-          )}
+          {errPct && <p className="text-xs text-destructive">{errPct}</p>}
         </div>
 
         <div className="space-y-4 mt-2">
@@ -751,9 +843,7 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
                   );
                 }
 
-                const ok = await trigger(allPaths as any, {
-                  shouldFocus: true,
-                });
+                const ok = await trigger(allPaths as any, { shouldFocus: true });
                 if (!ok) {
                   toast.error(
                     "Completa la unidad temática antes de agregar otra sesión."
@@ -841,16 +931,12 @@ export default function UnidadTematica({ index, onRemove, readOnly = false }: Pr
                 );
 
                 if (!ok) {
-                  toast.error(
-                    "Completa la sesión anterior antes de duplicarla."
-                  );
+                  toast.error("Completa la sesión anterior antes de duplicarla.");
                   return;
                 }
 
                 if (restante <= 0) {
-                  toast.error(
-                    "Ya no hay porcentaje restante para duplicar."
-                  );
+                  toast.error("Ya no hay porcentaje restante para duplicar.");
                   return;
                 }
 

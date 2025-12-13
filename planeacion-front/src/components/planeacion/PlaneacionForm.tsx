@@ -620,48 +620,49 @@ export default function PlaneacionForm({
     }
   }
 
-  async function guardarAvance() {
-    if (readOnly) {
-      toast.info("Esta planeación está finalizada. Solo lectura.");
-      return;
-    }
-    const values = form.getValues();
-    const prog = computeSectionProgress(values);
-    setSectionProgress(prog);
+    async function guardarAvance() {
+      if (!hasPlaneacionContext) {
+        toast.info("Primero crea o selecciona una planeación para guardar.");
+        return;
+      }
+      if (readOnly) {
+        toast.info("Esta planeación está finalizada. Solo lectura.");
+        return;
+      }
 
-    if (values.sesiones_por_semestre !== sumSesiones) {
-      toast.warning(
-        "Aviso: el total de sesiones (1.11) no cuadra con la suma de 3.9. Se guardará como está."
+      const values = form.getValues();
+      const prog = computeSectionProgress(values);
+      setSectionProgress(prog);
+
+      await persistirPlaneacion(values, { finalizar: false });
+    }
+
+
+    async function finalizarPlaneacion() {
+      if (!hasPlaneacionContext) {
+        toast.info("Primero crea o selecciona una planeación para finalizar.");
+        return;
+      }
+      if (readOnly) {
+        toast.info("Esta planeación ya está finalizada (solo lectura).");
+        return;
+      }
+
+      let values = form.getValues();
+      const prog = computeSectionProgress(values);
+      setSectionProgress(prog);
+
+      const entries = Object.entries(prog) as [SectionKey, SectionProgress][];
+      const firstIncomplete = entries.find(
+        ([, sec]) => (sec.missing?.length ?? 0) > 0
       );
-    }
-    if ((values.horas_por_semestre?.total ?? 0) !== sumHoras) {
-      toast.warning(
-        "Aviso: el total de horas (1.12) no cuadra con la suma de 3.8. Se guardará como está."
-      );
-    }
-    await persistirPlaneacion(values, { finalizar: false });
-  }
 
-  async function finalizarPlaneacion() {
-    if (readOnly) {
-      toast.info("Esta planeación ya está finalizada (solo lectura).");
-      return;
-    }
+      if (firstIncomplete) {
+        toast.error("Revisa los campos requeridos antes de finalizar.");
+        setActiveTab(firstIncomplete[0]);
+        return;
+      }
 
-    let values = form.getValues();
-    const prog = computeSectionProgress(values);
-    setSectionProgress(prog);
-
-    const entries = Object.entries(prog) as [SectionKey, SectionProgress][];
-    const firstIncomplete = entries.find(
-      ([, sec]) => (sec.missing?.length ?? 0) > 0
-    );
-
-    if (firstIncomplete) {
-      toast.error("Revisa los campos requeridos antes de finalizar.");
-      setActiveTab(firstIncomplete[0]);
-      return;
-    }
 
     let changed = false;
 
@@ -706,6 +707,9 @@ export default function PlaneacionForm({
   const tabBodyClass =
     "flex-1 min-h-0 overflow-x-hidden overflow-y-auto w-full max-w-full [scrollbar-gutter:stable_both-edges]";
 
+  const hasPlaneacionContext = !!planeacionId || !!initialNombrePlaneacion;
+
+
   return (
     <FormProvider {...form}>
       <form
@@ -745,35 +749,71 @@ export default function PlaneacionForm({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 justify-end">
+               <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                  {/* Navegación */}
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     onClick={goPrev}
                     disabled={activeTab === "datos"}
+                    className="
+                      text-muted-foreground
+                      hover:text-foreground
+                      hover:bg-muted/60
+                      transition
+                    "
                   >
-                    Anterior
+                    ← Anterior
                   </Button>
+
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     onClick={goNext}
                     disabled={activeTab === "plagio"}
+                    className="
+                      text-muted-foreground
+                      hover:text-foreground
+                      hover:bg-muted/60
+                      transition
+                    "
                   >
-                    Siguiente
+                    Siguiente →
                   </Button>
+
+                  {/* Separador visual */}
+                  <span className="mx-1 h-6 w-px bg-border" />
+
+                  {/* Guardar */}
                   <Button
                     type="button"
                     variant="outline"
                     onClick={guardarAvance}
                     disabled={isSubmitting || readOnly}
+                    className="
+                      border-primary/30
+                      text-primary
+                      hover:bg-primary/5
+                      hover:border-primary/50
+                      transition
+                    "
                   >
                     {isSubmitting ? "Guardando…" : "Guardar avance"}
                   </Button>
+
+                  {/* Acción principal */}
                   <Button
                     type="button"
                     onClick={finalizarPlaneacion}
                     disabled={isSubmitting || readOnly}
+                    className="
+                      px-5
+                      font-semibold
+                      shadow-md
+                      hover:shadow-lg
+                      active:scale-[0.98]
+                      transition-all
+                    "
                   >
                     {isSubmitting ? "Guardando…" : "Finalizar"}
                   </Button>
@@ -782,49 +822,90 @@ export default function PlaneacionForm({
 
               <TabsList
                 className="
+                  relative
                   w-full max-w-full min-w-0
                   overflow-x-auto md:overflow-x-hidden
-                  overflow-y-hidden
                   flex gap-2 p-2
-                  bg-muted/30
-                  rounded-lg
+                  rounded-xl
+                  bg-muted/40
+                  backdrop-blur
+                  border border-border/40
                 "
               >
                 {[
-                  { id: "datos", label: "Datos generales", num: 1 },
-                  { id: "relaciones", label: "Relaciones y ejes", num: 2 },
-                  { id: "organizacion", label: "Organización", num: 3 },
-                  { id: "referencias", label: "Referencias", num: 4 },
-                  { id: "plagio", label: "Plagio", num: 5 },
-                ].map((t) => (
-                  <TabsTrigger
-                    key={t.id}
-                    value={t.id}
+                { id: "datos", label: "Datos generales", num: 1 },
+                { id: "relaciones", label: "Relaciones y ejes", num: 2 },
+                { id: "organizacion", label: "Organización", num: 3 },
+                { id: "referencias", label: "Referencias", num: 4 },
+                { id: "plagio", label: "Plagio", num: 5 },
+              ].map((t) => (
+                <TabsTrigger
+                  key={t.id}
+                  value={t.id}
+                  className="
+                    group relative
+                    flex items-center gap-3
+                    px-4 py-2
+                    rounded-xl
+                    whitespace-nowrap
+                    text-sm font-medium
+                    transition-all duration-300 ease-out
+
+                    text-muted-foreground
+                    hover:text-foreground
+                    hover:bg-background/70
+                    hover:shadow-sm
+
+                    data-[state=active]:bg-background
+                    data-[state=active]:text-foreground
+                    data-[state=active]:shadow-md
+                    data-[state=active]:ring-1
+                    data-[state=active]:ring-primary/30
+                  "
+                >
+                  {/* Número */}
+                  <span
                     className="
-                      group flex items-center gap-3
-                      px-4 py-2 rounded-xl whitespace-nowrap
-                      text-sm font-medium transition-all duration-200
-                      data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
-                      data-[state=active]:shadow-md data-[state=active]:scale-[1.02]
-                      hover:bg-primary/10 hover:text-primary
+                      flex items-center justify-center
+                      w-7 h-7 rounded-full
+                      text-xs font-semibold
+                      border
+                      border-border/60
+                      bg-background
+                      text-muted-foreground
+                      transition-all duration-300
+
+                      group-hover:bg-primary/10
+                      group-hover:text-primary
+                      group-hover:border-primary/30
+
+                      group-data-[state=active]:bg-primary
+                      group-data-[state=active]:text-primary-foreground
+                      group-data-[state=active]:border-primary
                     "
                   >
+                    {t.num}
+                  </span>
+
+                  {/* Label */}
+                  <span className="relative">
+                    {t.label}
+
+                    {/* underline animado */}
                     <span
                       className="
-                        flex items-center justify-center
-                        w-7 h-7 rounded-full
-                        border border-foreground/20 text-xs font-semibold
-                        bg-background transition-all duration-200
-                        group-data-[state=active]:bg-primary-foreground/20
-                        group-data-[state=active]:text-primary-foreground
-                        group-data-[state=active]:border-transparent
+                        pointer-events-none
+                        absolute -bottom-1 left-0 h-[2px] w-full
+                        origin-left scale-x-0
+                        bg-primary
+                        transition-transform duration-300
+                        group-hover:scale-x-100
+                        group-data-[state=active]:scale-x-100
                       "
-                    >
-                      {t.num}
-                    </span>
-                    {t.label}
-                  </TabsTrigger>
-                ))}
+                    />
+                  </span>
+                </TabsTrigger>
+              ))}
               </TabsList>
             </div>
 
