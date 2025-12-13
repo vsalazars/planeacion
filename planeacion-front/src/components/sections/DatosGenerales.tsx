@@ -19,14 +19,22 @@ type Props = {
   unidades?: Array<{ id: number; nombre: string; abreviatura?: string | null }>;
   loading?: boolean;
   error?: string | null;
-  readOnly?: boolean; // 👈 NUEVO
+  readOnly?: boolean;
 };
+
+// convierte a número >= 0 (si viene vacío, lo deja vacío para permitir borrar)
+function clampNonNegativeInput(raw: string) {
+  if (raw === "") return "";
+  const n = Number(raw);
+  if (Number.isNaN(n)) return "";
+  return String(Math.max(0, n));
+}
 
 export default function DatosGenerales({
   unidades,
   loading,
   error,
-  readOnly = false, // 👈 por defecto editable
+  readOnly = false,
 }: Props) {
   const { register, control, setValue } = useFormContext<PlaneacionType>();
 
@@ -55,10 +63,7 @@ export default function DatosGenerales({
   }, [totalEspacios, setValue]);
 
   // ----- Cálculos sesiones -----
-  const sesAula = useWatch({
-    control,
-    name: "sesiones_por_semestre_det.aula",
-  });
+  const sesAula = useWatch({ control, name: "sesiones_por_semestre_det.aula" });
   const sesLab = useWatch({
     control,
     name: "sesiones_por_semestre_det.laboratorio",
@@ -92,7 +97,6 @@ export default function DatosGenerales({
         1. Datos generales y de identificación
       </h2>
 
-      {/* (Opcional) Mensajes de carga / error */}
       {loading && (
         <p className="text-xs text-muted-foreground">
           Cargando unidades académicas…
@@ -119,7 +123,11 @@ export default function DatosGenerales({
           <Input
             type="number"
             placeholder="2024"
-            {...register("plan_estudios_anio", { valueAsNumber: true })}
+            min={0}
+            {...register("plan_estudios_anio", {
+              valueAsNumber: true,
+              min: 0,
+            })}
             readOnly={readOnly}
           />
         </div>
@@ -136,7 +144,8 @@ export default function DatosGenerales({
           <Input
             type="number"
             step="0.1"
-            {...register("creditos.tepic", { valueAsNumber: true })}
+            min={0}
+            {...register("creditos.tepic", { valueAsNumber: true, min: 0 })}
             readOnly={readOnly}
           />
         </div>
@@ -145,7 +154,8 @@ export default function DatosGenerales({
           <Input
             type="number"
             step="0.1"
-            {...register("creditos.satca", { valueAsNumber: true })}
+            min={0}
+            {...register("creditos.satca", { valueAsNumber: true, min: 0 })}
             readOnly={readOnly}
           />
         </div>
@@ -185,6 +195,7 @@ export default function DatosGenerales({
             readOnly={readOnly}
           />
         </div>
+
         <div>
           <Label>Área de formación</Label>
           <Controller
@@ -194,7 +205,7 @@ export default function DatosGenerales({
               <Select
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
-                disabled={readOnly} // 👈 bloquea cambios
+                disabled={readOnly}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona" />
@@ -215,6 +226,7 @@ export default function DatosGenerales({
             )}
           />
         </div>
+
         <div>
           <Label>Modalidad</Label>
           <Controller
@@ -224,7 +236,7 @@ export default function DatosGenerales({
               <Select
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
-                disabled={readOnly} // 👈 bloquea cambios
+                disabled={readOnly}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona" />
@@ -242,7 +254,7 @@ export default function DatosGenerales({
         </div>
       </div>
 
-      {/* Fila 3: solo No. de sesiones por semestre */}
+      {/* Fila 3: sesiones por semestre */}
       <div className="grid gap-4">
         <Card>
           <CardHeader>
@@ -250,28 +262,42 @@ export default function DatosGenerales({
           </CardHeader>
           <CardContent>
             <div className="grid sm:grid-cols-5 gap-2">
-              {["aula", "laboratorio", "clinica", "otro"].map((k) => (
-                <div key={k}>
-                  <p className="text-xs capitalize mb-1">{k}</p>
-                  <Input
-                    type="number"
-                    {...register(`sesiones_por_semestre_det.${k}`, {
-                      valueAsNumber: true,
-                    })}
-                    readOnly={readOnly} // 👈 evita cambios
-                  />
-                </div>
-              ))}
+              {(["aula", "laboratorio", "clinica", "otro"] as const).map((k) => {
+                const reg = register(`sesiones_por_semestre_det.${k}`, {
+                  valueAsNumber: true,
+                  min: 0,
+                });
+
+                return (
+                  <div key={k}>
+                    <p className="text-xs capitalize mb-1">{k}</p>
+                    <Input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      {...reg}
+                      onChange={(e) => {
+                        // Sanitiza negativos (y paste de valores raros)
+                        if (readOnly) return;
+                        e.target.value = clampNonNegativeInput(e.target.value);
+                        reg.onChange(e);
+                      }}
+                      readOnly={readOnly}
+                    />
+                  </div>
+                );
+              })}
+
               <div>
                 <p className="text-xs mb-1">Total</p>
-                <Input type="number" value={totalSesiones} readOnly />
+                <Input type="number" value={Math.max(0, totalSesiones)} readOnly />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Fila 4: las dos cards de horas */}
+      {/* Fila 4: horas */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Card 2: Horas por tipo */}
         <Card>
@@ -280,22 +306,35 @@ export default function DatosGenerales({
           </CardHeader>
           <CardContent>
             <div className="grid sm:grid-cols-3 gap-2">
-              {["teoria", "practica"].map((k) => (
-                <div key={k}>
-                  <p className="text-xs capitalize mb-1">{k}</p>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    {...register(`horas_por_semestre.${k}`, {
-                      valueAsNumber: true,
-                    })}
-                    readOnly={readOnly}
-                  />
-                </div>
-              ))}
+              {(["teoria", "practica"] as const).map((k) => {
+                const reg = register(`horas_por_semestre.${k}`, {
+                  valueAsNumber: true,
+                  min: 0,
+                });
+
+                return (
+                  <div key={k}>
+                    <p className="text-xs capitalize mb-1">{k}</p>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      min={0}
+                      inputMode="decimal"
+                      {...reg}
+                      onChange={(e) => {
+                        if (readOnly) return;
+                        e.target.value = clampNonNegativeInput(e.target.value);
+                        reg.onChange(e);
+                      }}
+                      readOnly={readOnly}
+                    />
+                  </div>
+                );
+              })}
+
               <div>
                 <p className="text-xs mb-1">Total</p>
-                <Input type="number" value={totalTipo} readOnly />
+                <Input type="number" value={Math.max(0, totalTipo)} readOnly />
               </div>
             </div>
           </CardContent>
@@ -308,24 +347,44 @@ export default function DatosGenerales({
           </CardHeader>
           <CardContent>
             <div className="grid sm:grid-cols-5 gap-2">
-              {["aula", "laboratorio", "clinica", "otro"].map((k) => (
-                <div key={k}>
-                  <p className="text-xs capitalize mb-1">{k}</p>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    {...register(`horas_por_semestre.${k}`, {
-                      valueAsNumber: true,
-                    })}
-                    readOnly={readOnly}
-                  />
-                </div>
-              ))}
+              {(
+                ["aula", "laboratorio", "clinica", "otro"] as const
+              ).map((k) => {
+                const reg = register(`horas_por_semestre.${k}`, {
+                  valueAsNumber: true,
+                  min: 0,
+                });
+
+                return (
+                  <div key={k}>
+                    <p className="text-xs capitalize mb-1">{k}</p>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      min={0}
+                      inputMode="decimal"
+                      {...reg}
+                      onChange={(e) => {
+                        if (readOnly) return;
+                        e.target.value = clampNonNegativeInput(e.target.value);
+                        reg.onChange(e);
+                      }}
+                      readOnly={readOnly}
+                    />
+                  </div>
+                );
+              })}
+
               <div>
                 <p className="text-xs mb-1">Total</p>
-                <Input type="number" value={totalEspacios} readOnly />
+                <Input
+                  type="number"
+                  value={Math.max(0, totalEspacios)}
+                  readOnly
+                />
               </div>
             </div>
+
             {totalTipo !== totalEspacios &&
               (totalTipo !== 0 || totalEspacios !== 0) && (
                 <p className="text-xs text-amber-600 mt-2">

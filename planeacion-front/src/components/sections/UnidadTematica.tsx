@@ -237,7 +237,21 @@ function BloqueItem({
           <AlertDialogTrigger asChild>
             <Button
               type="button"
-              variant="outline"
+              className="
+                        h-9 px-4
+                        rounded-xl
+                        bg-[#5A1236] text-white border border-[#5A1236]
+                        text-sm font-medium
+                        shadow-sm shadow-[#5A1236]/25
+                        transition-all duration-150
+                        hover:bg-[#741845]
+                        hover:shadow-md hover:shadow-[#5A1236]/30
+                        active:scale-[0.98]
+                        focus-visible:outline-none
+                        focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
+                        focus-visible:ring-offset-2
+                        disabled:opacity-50 disabled:shadow-none
+                      "             
               disabled={readOnly} // 👈 no eliminar en solo lectura
             >
               Eliminar sesión
@@ -621,20 +635,20 @@ export default function UnidadTematica({
             <div className="text-xs text-muted-foreground">Taller</div>
             <div className="text-xs text-muted-foreground">Clínica</div>
             <div className="text-xs text-muted-foreground">Otro</div>
-            <div className="text-xs text-muted-foreground">Total (auto)</div>
+            <div className="text-xs text-muted-foreground">Total</div>
 
             <div className="font-medium text-sm">Horas</div>
             <Input
               type="number"
               min={0}
-              step="0.1"
+              step="0.5"
               {...register(`${name}.horas.aula`, { valueAsNumber: true })}
               readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
-              step="0.1"
+              step="0.5"
               {...register(`${name}.horas.laboratorio`, {
                 valueAsNumber: true,
               })}
@@ -643,21 +657,21 @@ export default function UnidadTematica({
             <Input
               type="number"
               min={0}
-              step="0.1"
+              step="0.5"
               {...register(`${name}.horas.taller`, { valueAsNumber: true })}
               readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
-              step="0.1"
+              step="0.5"
               {...register(`${name}.horas.clinica`, { valueAsNumber: true })}
               readOnly={readOnly}
             />
             <Input
               type="number"
               min={0}
-              step="0.1"
+              step="0.5"
               {...register(`${name}.horas.otro`, { valueAsNumber: true })}
               readOnly={readOnly}
             />
@@ -680,7 +694,7 @@ export default function UnidadTematica({
             <div className="text-xs text-muted-foreground">Taller</div>
             <div className="text-xs text-muted-foreground">Clínica</div>
             <div className="text-xs text-muted-foreground">Otro</div>
-            <div className="text-xs text-muted-foreground">Total (auto)</div>
+            <div className="text-xs text-muted-foreground">Total</div>
 
             <div className="font-medium text-sm">Sesiones</div>
             <Input
@@ -760,7 +774,21 @@ export default function UnidadTematica({
               />
               <Button
                 type="button"
-                variant="outline"
+                className="
+                        h-9 px-4
+                        rounded-xl
+                        bg-[#5A1236] text-white border border-[#5A1236]
+                        text-sm font-medium
+                        shadow-sm shadow-[#5A1236]/25
+                        transition-all duration-150
+                        hover:bg-[#741845]
+                        hover:shadow-md hover:shadow-[#5A1236]/30
+                        active:scale-[0.98]
+                        focus-visible:outline-none
+                        focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
+                        focus-visible:ring-offset-2
+                        disabled:opacity-50 disabled:shadow-none
+                      "             
                 onClick={() => aprendizajes.remove(i)}
                 disabled={readOnly}
               >
@@ -770,7 +798,21 @@ export default function UnidadTematica({
           ))}
           <Button
             type="button"
-            variant="outline"
+            className="
+                        h-9 px-4
+                        rounded-xl
+                        bg-[#5A1236] text-white border border-[#5A1236]
+                        text-sm font-medium
+                        shadow-sm shadow-[#5A1236]/25
+                        transition-all duration-150
+                        hover:bg-[#741845]
+                        hover:shadow-md hover:shadow-[#5A1236]/30
+                        active:scale-[0.98]
+                        focus-visible:outline-none
+                        focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
+                        focus-visible:ring-offset-2
+                        disabled:opacity-50 disabled:shadow-none
+                      "             
             onClick={() => aprendizajes.append("")}
             disabled={readOnly}
           >
@@ -805,7 +847,21 @@ export default function UnidadTematica({
             {/* Agregar sesión en blanco */}
             <Button
               type="button"
-              variant="outline"
+              className="
+                        h-9 px-4
+                        rounded-xl
+                        bg-[#5A1236] text-white border border-[#5A1236]
+                        text-sm font-medium
+                        shadow-sm shadow-[#5A1236]/25
+                        transition-all duration-150
+                        hover:bg-[#741845]
+                        hover:shadow-md hover:shadow-[#5A1236]/30
+                        active:scale-[0.98]
+                        focus-visible:outline-none
+                        focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
+                        focus-visible:ring-offset-2
+                        disabled:opacity-50 disabled:shadow-none
+                      "             
               disabled={readOnly}
               onClick={async () => {
                 if (readOnly) return;
@@ -882,7 +938,21 @@ export default function UnidadTematica({
             {/* Duplicar sesión anterior */}
             <Button
               type="button"
-              variant="outline"
+              className="
+                        h-9 px-4
+                        rounded-xl
+                        bg-[#5A1236] text-white border border-[#5A1236]
+                        text-sm font-medium
+                        shadow-sm shadow-[#5A1236]/25
+                        transition-all duration-150
+                        hover:bg-[#741845]
+                        hover:shadow-md hover:shadow-[#5A1236]/30
+                        active:scale-[0.98]
+                        focus-visible:outline-none
+                        focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
+                        focus-visible:ring-offset-2
+                        disabled:opacity-50 disabled:shadow-none
+                      "             
               disabled={readOnly}
               onClick={async () => {
                 if (readOnly) return;

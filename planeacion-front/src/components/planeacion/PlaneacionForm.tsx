@@ -675,7 +675,7 @@ export default function PlaneacionForm({
 
     if (values.sesiones_por_semestre !== sumSesiones) {
       toast.warning(
-        "Se ajustó el total de sesiones (1.11) para que coincida con la suma de las unidades (3.9)."
+        ""
       );
       setValue("sesiones_por_semestre", sumSesiones, {
         shouldDirty: true,
@@ -686,7 +686,7 @@ export default function PlaneacionForm({
 
     if ((values.horas_por_semestre?.total ?? 0) !== sumHoras) {
       toast.warning(
-        "Se ajustó el total de horas (1.12) para que coincida con la suma de las unidades (3.8)."
+        ""
       );
       setValue("horas_por_semestre.total", sumHoras, {
         shouldDirty: true,
@@ -739,14 +739,25 @@ export default function PlaneacionForm({
                     {planeacionNombre}
                   </h1>
                   <div className="flex flex-wrap items-center gap-2 mt-1 md:mt-0">
-                    <Badge variant="secondary" className="w-fit">
+                    <Badge
+                      className={`w-fit border ${
+                        planeacionId
+                          ? "bg-emerald-600/15 text-emerald-700 border-emerald-600/30 dark:bg-emerald-400/15 dark:text-emerald-300 dark:border-emerald-400/30"
+                          : "bg-amber-600/15 text-amber-800 border-amber-600/30 dark:bg-amber-400/15 dark:text-amber-200 dark:border-amber-400/30"
+                      }`}
+                    >
                       {planeacionId ? "Guardado" : "Borrador"}
                     </Badge>
+
                     {readOnly && (
-                      <Badge variant="outline" className="w-fit">
+                      <Badge
+                        variant="outline"
+                        className="w-fit border-[#5A1236]/40 text-[#5A1236] dark:border-[#5A1236]/60 dark:text-[#c46a8a]"
+                      >
                         Finalizada · solo lectura
                       </Badge>
                     )}
+
                   </div>
                 </div>
 
@@ -941,7 +952,8 @@ export default function PlaneacionForm({
                     </div>
                   </div>
 
-                  <Accordion type="multiple" className="space-y-2">
+                  <Accordion type="multiple" defaultValue={["ut-0"]} className="space-y-2">
+
                     {ut.fields.map((f, idx) => (
                       <AccordionItem
                         key={f.id}
@@ -983,8 +995,22 @@ export default function PlaneacionForm({
                   <div className="flex gap-2 min-w-0">
                     <Button
                       type="button"
-                      variant="outline"
-                      onClick={async () => {
+                      className="
+                        h-9 px-4
+                        rounded-xl
+                        bg-[#5A1236] text-white border border-[#5A1236]
+                        text-sm font-medium
+                        shadow-sm shadow-[#5A1236]/25
+                        transition-all duration-150
+                        hover:bg-[#741845]
+                        hover:shadow-md hover:shadow-[#5A1236]/30
+                        active:scale-[0.98]
+                        focus-visible:outline-none
+                        focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
+                        focus-visible:ring-offset-2
+                        disabled:opacity-50 disabled:shadow-none
+                      "             
+                        onClick={async () => {
                         const lastIdx = ut.fields.length - 1;
                         if (lastIdx >= 0) {
                           const ok = await trigger(
@@ -1031,9 +1057,9 @@ export default function PlaneacionForm({
                     </Button>
 
                     <div className="ml-auto flex items-center gap-2 text-sm min-w-0">
-                      <span className="shrink-0">sesiones por semestre:</span>
+                      <h2>sesiones por semestre:</h2>
                       <Input className="w-24 h-9" type="number" value={sesionesPorSemestre ?? 0} readOnly />
-                      <span className="shrink-0">total horas:</span>
+                      <h2>total horas:</h2>
                       <Input className="w-24 h-9" type="number" step="0.1" value={totalHorasDeclarado ?? 0} readOnly />
                     </div>
                   </div>

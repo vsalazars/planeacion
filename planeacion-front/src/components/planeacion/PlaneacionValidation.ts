@@ -86,16 +86,7 @@ export function computeSectionProgress(
   const totalSesionesEspacio =
     sesionesAula + sesionesLab + sesionesClinica + sesionesOtro;
 
-  if (totalSesionesEspacio <= 0) {
-    prog.datos.missing.push(
-      "Distribuir No. de sesiones por semestre en aula / laboratorio / clínica / otro (1.11)"
-    );
-  } else if (sesionesPorSem > 0 && totalSesionesEspacio !== sesionesPorSem) {
-    prog.datos.missing.push(
-      "La suma de aula/laboratorio/clínica/otro debe coincidir con el total de sesiones por semestre (1.11)"
-    );
-  }
-
+  
   const horasSem = values.horas_por_semestre || {};
   const hTeoria = Number(horasSem.teoria ?? 0);
   const hPractica = Number(horasSem.practica ?? 0);
