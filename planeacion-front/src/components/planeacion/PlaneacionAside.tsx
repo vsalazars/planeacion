@@ -41,6 +41,7 @@ export default function PlaneacionAside({ sectionProgress }: Props) {
 
       <div className="sticky top-[5.5rem]">
         <Card className="max-h-[calc(100vh-136px)] overflow-y-auto flex flex-col shadow-sm pb-4">
+        
 
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-2">

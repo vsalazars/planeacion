@@ -234,14 +234,8 @@ export default function PlaneacionesDashboard({ token }: { token: string }) {
   return (
     <>
       {/* ===== HEADER ===== */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold">Planeación didáctica</h1>
-          <p className="text-sm text-muted-foreground">
-            Gestiona tus planeaciones y edítalas en un solo lugar.
-          </p>
-        </div>
-
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Planeación didáctica</h1>
         <div className="flex gap-2">
           <Button
             onClick={handleNuevaPlaneacion}

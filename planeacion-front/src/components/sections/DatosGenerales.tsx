@@ -164,7 +164,7 @@ export default function DatosGenerales({
         <div>
           <Label>Programa académico</Label>
           <Input
-            placeholder="Ingeniería X"
+            placeholder="Ingeniería Mecatrónica"
             {...register("programa_academico")}
             readOnly={readOnly}
           />
@@ -276,7 +276,7 @@ export default function DatosGenerales({
         {/* Card 2: Horas por tipo */}
         <Card>
           <CardHeader>
-            <CardTitle>Horas por semestre — por tipo</CardTitle>
+            <CardTitle>Horas por semestre (tipo)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid sm:grid-cols-3 gap-2">
@@ -304,7 +304,7 @@ export default function DatosGenerales({
         {/* Card 3: Horas por espacio */}
         <Card>
           <CardHeader>
-            <CardTitle>Horas por semestre — por espacio</CardTitle>
+            <CardTitle>Horas por semestre (espacio)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid sm:grid-cols-5 gap-2">

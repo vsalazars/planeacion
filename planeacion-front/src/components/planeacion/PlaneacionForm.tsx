@@ -811,12 +811,15 @@ export default function PlaneacionForm({
                 className="
                   relative
                   w-full max-w-full min-w-0
-                  overflow-x-auto md:overflow-x-hidden
-                  flex gap-2 p-2
+                  flex flex-nowrap items-center gap-2
+                  p-2
                   rounded-xl
                   bg-muted/40
                   backdrop-blur
                   border border-border/40
+
+                  overflow-x-auto
+                  overflow-y-hidden
                 "
               >
                 {[

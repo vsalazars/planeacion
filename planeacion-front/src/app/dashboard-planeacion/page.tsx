@@ -93,11 +93,11 @@ export default async function DashboardPlaneacionPage() {
                 <div className="flex items-center gap-2">
                   
                   <h1 className="text-base sm:text-lg font-semibold leading-tight">
-                    Sistema de Planeación Didáctica
+                    Instituto Politécnico Nacional
                   </h1>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Planeaciones, unidades temáticas y evaluación en un solo lugar.
+                  Dirección de Educación Superior
                 </p>
               </div>
             </div>
