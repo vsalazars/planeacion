@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  FormProvider,
-  useFieldArray,
-  useForm,
-  useWatch,
-} from "react-hook-form";
+import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { PlaneacionSchema, PlaneacionType } from "./schema";
@@ -50,12 +45,16 @@ export default function PlaneacionForm({
   planeacionId: planeacionIdProp,
   initialNombrePlaneacion,
   onFinalizar,
+  onSaved,
+  onCreated,
   readOnly = false,
 }: {
   token: string;
   planeacionId?: number | null;
   initialNombrePlaneacion?: string;
   onFinalizar?: () => void;
+  onSaved?: () => void;
+  onCreated?: (newId: number) => void;
   readOnly?: boolean;
 }) {
   const router = useRouter();
@@ -81,6 +80,8 @@ export default function PlaneacionForm({
   const [unidades, setUnidades] = useState<Unidad[]>([]);
   const [uLoading, setULoading] = useState(false);
   const [uError, setUError] = useState<string | null>(null);
+
+  const hasPlaneacionContext = !!planeacionId || !!initialNombrePlaneacion;
 
   useEffect(() => {
     if (!planeacionId) {
@@ -403,9 +404,7 @@ export default function PlaneacionForm({
       } catch (err: any) {
         if (!cancel) {
           console.error(err);
-          toast.error(
-            err?.message ?? "No se pudo recuperar la planeación guardada."
-          );
+          toast.error(err?.message ?? "No se pudo recuperar la planeación guardada.");
         }
       }
     })();
@@ -415,9 +414,6 @@ export default function PlaneacionForm({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planeacionId, token]);
-
-  // ✅ Debe ir antes de usarlo en botones/funciones
-  const hasPlaneacionContext = !!planeacionId || !!initialNombrePlaneacion;
 
   function buildPayload(values: PlaneacionType, opts?: { finalizar?: boolean }) {
     const payload: any = {
@@ -599,6 +595,7 @@ export default function PlaneacionForm({
 
       const data = await res.json();
 
+      // ✅ Si fue creación, tu backend devuelve { id }
       if (!planeacionId && data?.id) {
         const newId = Number(data.id);
         if (!Number.isNaN(newId) && newId > 0) {
@@ -606,6 +603,8 @@ export default function PlaneacionForm({
           if (typeof window !== "undefined") {
             window.localStorage.setItem("planeacion_actual_id", String(newId));
           }
+          // ✅ avisa al dashboard para quitar “Sin guardar aún”
+          onCreated?.(newId);
         }
       }
 
@@ -618,6 +617,9 @@ export default function PlaneacionForm({
           ? "Avance guardado correctamente."
           : "Planeación guardada correctamente."
       );
+
+      // ✅ refresca lista SIEMPRE que guardas
+      onSaved?.();
 
       return true;
     } catch (err: any) {
@@ -641,10 +643,7 @@ export default function PlaneacionForm({
     const prog = computeSectionProgress(values);
     setSectionProgress(prog);
 
-    const ok = await persistirPlaneacion(values, { finalizar: false });
-
-    // ✅ CLAVE: refrescar lista también al guardar avance
-    if (ok && onFinalizar) onFinalizar();
+    await persistirPlaneacion(values, { finalizar: false });
   }
 
   async function finalizarPlaneacion() {
@@ -757,12 +756,7 @@ export default function PlaneacionForm({
                     variant="ghost"
                     onClick={goPrev}
                     disabled={activeTab === "datos"}
-                    className="
-                      text-muted-foreground
-                      hover:text-foreground
-                      hover:bg-muted/60
-                      transition
-                    "
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted/60 transition"
                   >
                     ← Anterior
                   </Button>
@@ -772,12 +766,7 @@ export default function PlaneacionForm({
                     variant="ghost"
                     onClick={goNext}
                     disabled={activeTab === "plagio"}
-                    className="
-                      text-muted-foreground
-                      hover:text-foreground
-                      hover:bg-muted/60
-                      transition
-                    "
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted/60 transition"
                   >
                     Siguiente →
                   </Button>
@@ -788,7 +777,7 @@ export default function PlaneacionForm({
                     type="button"
                     variant="outline"
                     onClick={guardarAvance}
-                    disabled={!hasPlaneacionContext || isSubmitting || readOnly}
+                    disabled={isSubmitting || readOnly || !hasPlaneacionContext}
                     className="
                       border-primary/30
                       text-primary
@@ -803,7 +792,7 @@ export default function PlaneacionForm({
                   <Button
                     type="button"
                     onClick={finalizarPlaneacion}
-                    disabled={!hasPlaneacionContext || isSubmitting || readOnly}
+                    disabled={isSubmitting || readOnly || !hasPlaneacionContext}
                     className="
                       px-5
                       font-semibold
@@ -944,8 +933,8 @@ export default function PlaneacionForm({
                       3. Organización didáctica
                     </h2>
                     <div className="text-sm text-muted-foreground shrink-0">
-                      Total sesiones: <b>{sumSesiones}</b> &nbsp;|&nbsp; Total
-                      horas: <b>{sumHoras}</b>
+                      Total sesiones: <b>{sumSesiones}</b> &nbsp;|&nbsp; Total horas:{" "}
+                      <b>{sumHoras}</b>
                     </div>
                   </div>
 
@@ -1040,20 +1029,9 @@ export default function PlaneacionForm({
 
                     <div className="ml-auto flex items-center gap-2 text-sm min-w-0">
                       <span className="shrink-0">sesiones por semestre:</span>
-                      <Input
-                        className="w-24 h-9"
-                        type="number"
-                        value={sesionesPorSemestre ?? 0}
-                        readOnly
-                      />
+                      <Input className="w-24 h-9" type="number" value={sesionesPorSemestre ?? 0} readOnly />
                       <span className="shrink-0">total horas:</span>
-                      <Input
-                        className="w-24 h-9"
-                        type="number"
-                        step="0.1"
-                        value={totalHorasDeclarado ?? 0}
-                        readOnly
-                      />
+                      <Input className="w-24 h-9" type="number" step="0.1" value={totalHorasDeclarado ?? 0} readOnly />
                     </div>
                   </div>
                 </div>
@@ -1067,10 +1045,7 @@ export default function PlaneacionForm({
             >
               <div className={tabBodyClass}>
                 <div className="pb-24 w-full max-w-full min-w-0 overflow-x-hidden">
-                  <Referencias
-                    unidadesCount={unidadesCount}
-                    readOnly={readOnly}
-                  />
+                  <Referencias unidadesCount={unidadesCount} readOnly={readOnly} />
                 </div>
               </div>
             </TabsContent>
