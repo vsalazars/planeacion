@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Script from "next/script";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -22,14 +23,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  LogIn,
-  Mail,
-  Lock,
-  UserPlus,
-  KeyRound,
-  Loader2,
-} from "lucide-react";
+import { LogIn, Mail, Lock, UserPlus, KeyRound, Loader2 } from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -40,16 +34,19 @@ import {
 import { toast } from "sonner";
 
 // ====== ENV / URLS ======
-// Por defecto: backend Go en http://localhost:8080/api
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api").replace(/\/$/, "");
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api").replace(
+  /\/$/,
+  ""
+);
+
 const DASHBOARD_PATH =
   process.env.NEXT_PUBLIC_DASHBOARD_PATH || "/planeaciones";
-
 
 const URLS = {
   unidades: `${API_BASE}/unidades`,
   register: `${API_BASE}/auth/register`,
   login: `${API_BASE}/auth/login`,
+  google: `${API_BASE}/auth/google`,
 };
 
 // ====== Tipos ======
@@ -59,7 +56,15 @@ type Unidad = {
   abreviatura?: string | null;
 };
 
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
 export default function Home() {
+  const router = useRouter();
+
   // Login
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
@@ -75,21 +80,49 @@ export default function Home() {
   const [registering, setRegistering] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+  const [regSelectedUnitId, setRegSelectedUnitId] = useState<string>("");
 
-  // Unidades
+  // Unidades (catálogo)
   const [units, setUnits] = useState<Unidad[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(false);
   const [unitsError, setUnitsError] = useState<string | null>(null);
-  const [selectedUnitId, setSelectedUnitId] = useState<string>("");
 
-  const router = useRouter();
+  // Google (flujo)
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [pendingGoogleToken, setPendingGoogleToken] = useState<string>("");
+  const [openGoogleUnit, setOpenGoogleUnit] = useState(false);
+  const [googleUnitId, setGoogleUnitId] = useState<string>("");
+
+  // Sheet (para re-render seguro del botón)
+  const [openSheet, setOpenSheet] = useState(false);
+
+  // Control de inicialización GIS para evitar dobles renders
+  const gisInitializedRef = useRef(false);
+  const gisRenderedRef = useRef(false);
 
   const displayUnitLabel = (u: Unidad) =>
     u.abreviatura ? `${u.nombre} (${u.abreviatura})` : u.nombre;
 
-  const selectedUnit = selectedUnitId
-    ? units.find((u) => String(u.id) === selectedUnitId)
-    : undefined;
+  const selectedRegUnit = useMemo(
+    () =>
+      regSelectedUnitId
+        ? units.find((u) => String(u.id) === regSelectedUnitId)
+        : undefined,
+    [regSelectedUnitId, units]
+  );
+
+  const selectedGoogleUnit = useMemo(
+    () =>
+      googleUnitId ? units.find((u) => String(u.id) === googleUnitId) : undefined,
+    [googleUnitId, units]
+  );
+
+  function clearPlaneacionLocalContext() {
+    // ✅ evita 404 por planeacion_actual_id de otro usuario
+    try {
+      localStorage.removeItem("planeacion_actual_id");
+    } catch {}
+  }
 
   async function safeJson(res: Response) {
     try {
@@ -99,54 +132,43 @@ export default function Home() {
     }
   }
 
-  // Cargar unidades al abrir modal de registro
-  useEffect(() => {
-    let ignore = false;
+  async function loadUnitsOnce() {
+    if (unitsLoading || units.length > 0) return;
+    try {
+      setUnitsError(null);
+      setUnitsLoading(true);
 
-    async function loadUnits() {
-      try {
-        setUnitsError(null);
-        setUnitsLoading(true);
-
-        const res = await fetch(URLS.unidades, { cache: "no-store" });
-
-        if (!res.ok) {
-          const maybeJSON = await safeJson(res);
-          const msg =
-            maybeJSON?.error ||
-            maybeJSON?.msg ||
-            maybeJSON?.detail ||
-            "No se pudo cargar el catálogo de unidades";
-          throw new Error(msg);
-        }
-
-        const payload = await res.json();
-
-        // Backend Go devuelve { items: Unidad[], total }
-        const items: Unidad[] = Array.isArray(payload)
-          ? payload
-          : Array.isArray(payload?.items)
-          ? payload.items
-          : [];
-
-        if (!ignore) setUnits(items);
-      } catch (err: any) {
-        if (!ignore)
-          setUnitsError(
-            err?.message ?? "Error cargando unidades académicas"
-          );
-      } finally {
-        if (!ignore) setUnitsLoading(false);
+      const res = await fetch(URLS.unidades, { cache: "no-store" });
+      if (!res.ok) {
+        const maybeJSON = await safeJson(res);
+        const msg =
+          maybeJSON?.error ||
+          maybeJSON?.msg ||
+          maybeJSON?.detail ||
+          "No se pudo cargar el catálogo de unidades";
+        throw new Error(msg);
       }
+
+      const payload = await res.json();
+      const items: Unidad[] = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.items)
+        ? payload.items
+        : [];
+
+      setUnits(items);
+    } catch (err: any) {
+      setUnitsError(err?.message ?? "Error cargando unidades académicas");
+    } finally {
+      setUnitsLoading(false);
     }
+  }
 
-    if (openRegister && units.length === 0 && !unitsLoading) loadUnits();
-
-    return () => {
-      ignore = true;
-    };
+  // Cargar unidades cuando se abra registro o el modal de unidad para Google
+  useEffect(() => {
+    if (openRegister || openGoogleUnit) loadUnitsOnce();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openRegister]);
+  }, [openRegister, openGoogleUnit]);
 
   // ---- Login ----
   async function handleLoginSubmit(e: React.FormEvent) {
@@ -170,9 +192,7 @@ export default function Home() {
           data?.error ||
           data?.msg ||
           (data?.detail &&
-            (Array.isArray(data.detail)
-              ? data.detail[0]?.msg
-              : data.detail)) ||
+            (Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail)) ||
           (res.status === 401
             ? "Credenciales inválidas"
             : `No se pudo iniciar sesión (${res.status})`);
@@ -181,10 +201,8 @@ export default function Home() {
 
       const data = await res.json();
       const token = data.access_token || data.token || data?.accessToken;
-      if (!token)
-        throw new Error("Respuesta de autenticación inválida (sin token).");
+      if (!token) throw new Error("Respuesta de autenticación inválida (sin token).");
 
-      // Guarda cookie HttpOnly en Next (no accesible desde JS)
       const ses = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -192,24 +210,17 @@ export default function Home() {
       });
       if (!ses.ok) throw new Error("No se pudo establecer la sesión.");
 
-      // (Opcional) guarda user en localStorage para UI
-      if (data.user)
-        localStorage.setItem("auth_user", JSON.stringify(data.user));
+      if (data.user) localStorage.setItem("auth_user", JSON.stringify(data.user));
+
+      // ✅ clave: limpia contexto anterior (evita 404 en panel con otro usuario)
+      clearPlaneacionLocalContext();
 
       toast.success("¡Bienvenido! Redirigiendo al panel…");
 
-      // redirige a ?next=... si existe
       const params = new URLSearchParams(window.location.search);
       let next = params.get("next");
-
-      // Si next no existe o apunta al viejo dashboard, enviamos a /planeaciones
-      if (!next || next.startsWith("/dashboard-planeacion")) {
-        next = "/planeaciones";
-      }
-
+      if (!next || next.startsWith("/dashboard-planeacion")) next = DASHBOARD_PATH;
       router.push(next);
-
-
     } catch (err: any) {
       setLoginError(err?.message ?? "Error al iniciar sesión");
     } finally {
@@ -230,7 +241,7 @@ export default function Home() {
       setRegError("Las contraseñas no coinciden");
       return;
     }
-    if (!selectedUnitId) {
+    if (!regSelectedUnitId) {
       setRegError("Selecciona una unidad académica");
       return;
     }
@@ -244,7 +255,7 @@ export default function Home() {
           nombre: regName.trim(),
           email: regEmail.trim(),
           password: regPass,
-          unidad_id: Number(selectedUnitId),
+          unidad_id: Number(regSelectedUnitId),
         }),
       });
 
@@ -254,9 +265,7 @@ export default function Home() {
           data?.error ||
           data?.msg ||
           (data?.detail &&
-            (Array.isArray(data.detail)
-              ? data.detail[0]?.msg
-              : data.detail)) ||
+            (Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail)) ||
           `No se pudo crear la cuenta (${res.status})`;
         throw new Error(msg);
       }
@@ -268,7 +277,7 @@ export default function Home() {
       setRegEmail2("");
       setRegPass("");
       setRegPass2("");
-      setSelectedUnitId("");
+      setRegSelectedUnitId("");
       setRegError(null);
     } catch (err: any) {
       setRegError(err?.message ?? "Error al registrar usuario");
@@ -277,8 +286,140 @@ export default function Home() {
     }
   }
 
+  // ---- Google login: primero intentamos SIN unidad, si backend pide unidad, abrimos modal ----
+  async function exchangeGoogleTokenForJWT(idToken: string, unidadID?: number) {
+    setGoogleBusy(true);
+    setLoginError(null);
+
+    try {
+      const res = await fetch(URLS.google, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          unidadID ? { id_token: idToken, unidad_id: unidadID } : { id_token: idToken }
+        ),
+      });
+
+      const data = await safeJson(res);
+
+      if (!res.ok) {
+        const msg = data?.error || data?.msg || `No se pudo iniciar con Google (${res.status})`;
+
+        // Si el backend exige unidad_id para usuario nuevo
+        if (
+          res.status === 400 &&
+          typeof msg === "string" &&
+          msg.toLowerCase().includes("unidad_id")
+        ) {
+          setPendingGoogleToken(idToken);
+          setGoogleUnitId("");
+          setOpenGoogleUnit(true);
+          return;
+        }
+
+        throw new Error(msg);
+      }
+
+      const token = data?.access_token || data?.token || data?.accessToken;
+      if (!token) throw new Error("Respuesta inválida (sin token).");
+
+      const ses = await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, maxAge: 3600 }),
+      });
+      if (!ses.ok) throw new Error("No se pudo establecer la sesión.");
+
+      if (data?.user) localStorage.setItem("auth_user", JSON.stringify(data.user));
+
+      // ✅ clave: limpia contexto anterior (evita 404 en panel con otro usuario)
+      clearPlaneacionLocalContext();
+
+      toast.success("¡Bienvenido! Redirigiendo al panel…");
+
+      const params = new URLSearchParams(window.location.search);
+      let next = params.get("next");
+      if (!next || next.startsWith("/dashboard-planeacion")) next = DASHBOARD_PATH;
+      router.push(next);
+    } catch (err: any) {
+      setLoginError(err?.message ?? "Error al iniciar con Google");
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
+
+  // Render del botón clásico de Google (GIS)
+  function renderGoogleButton(force = false) {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+
+    if (!window.google?.accounts?.id) return;
+
+    // Evita doble inicialización/render (StrictMode en dev puede disparar 2 veces)
+    if (!gisInitializedRef.current) {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (resp: any) => {
+          const idTok = resp?.credential;
+          if (!idTok) {
+            toast.error("No se recibió credencial de Google.");
+            return;
+          }
+          exchangeGoogleTokenForJWT(idTok);
+        },
+        // reduce errores FedCM
+        use_fedcm_for_prompt: false,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      gisInitializedRef.current = true;
+    }
+
+    const el = document.getElementById("googleBtn");
+    if (!el) return;
+
+    if (gisRenderedRef.current && !force) return;
+
+    el.innerHTML = "";
+    window.google.accounts.id.renderButton(el, {
+      theme: "outline",
+      size: "large",
+      type: "standard",
+      shape: "rectangular",
+      text: "continue_with",
+      width: 320,
+      logo_alignment: "left",
+    });
+
+    gisRenderedRef.current = true;
+  }
+
+  // Render automático cuando el Sheet se abre (cuando el div existe)
+  useEffect(() => {
+    if (!openSheet) return;
+    // pequeño delay para asegurar mount del contenido del Sheet
+    const t = setTimeout(() => {
+      try {
+        renderGoogleButton(true);
+      } catch {}
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSheet]);
+
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => {
+          // si el sheet ya está abierto al cargar, renderizamos
+          try {
+            if (openSheet) renderGoogleButton(true);
+          } catch {}
+        }}
+      />
+
       {/* NAV */}
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
@@ -318,8 +459,7 @@ export default function Home() {
               Versión preliminar
             </p>
             <h1 className="text-3xl md:text-5xl font-bold leading-tight">
-              Planeación didáctica centralizada y alineada al modelo
-              institucional
+              Planeación didáctica centralizada y alineada al modelo institucional
             </h1>
             <p className="mt-4 text-muted-foreground max-w-prose">
               Diseña, organiza y da seguimiento a planeaciones con los cinco
@@ -327,18 +467,24 @@ export default function Home() {
               temáticas, evaluación y bibliografía.
             </p>
 
-            {/* BOTÓN ÚNICO: INICIAR → abre Sheet con LOGIN */}
             <div className="mt-8">
-              <Sheet>
+              <Sheet
+                open={openSheet}
+                onOpenChange={(open) => {
+                  setOpenSheet(open);
+                  if (open) {
+                    // al abrir: limpia errores, y re-render de Google en useEffect(openSheet)
+                    setLoginError(null);
+                  }
+                }}
+              >
                 <SheetTrigger asChild>
-                  {/* ⬇️ clave: prevenir submit accidental de forms ancestros */}
                   <Button type="button" size="lg" className="px-6">
                     <LogIn className="mr-2 h-5 w-5" />
                     Iniciar
                   </Button>
                 </SheetTrigger>
 
-                {/* Sheet de Login */}
                 <SheetContent side="right" className="w-full sm:max-w-md">
                   <div className="flex h-full flex-col">
                     <SheetHeader className="space-y-1 text-center">
@@ -363,9 +509,7 @@ export default function Home() {
                               placeholder="tucorreo@ipn.mx"
                               autoComplete="email"
                               value={loginEmail}
-                              onChange={(e) =>
-                                setLoginEmail(e.target.value)
-                              }
+                              onChange={(e) => setLoginEmail(e.target.value)}
                               required
                               autoFocus
                               className="pl-9"
@@ -386,27 +530,23 @@ export default function Home() {
                               placeholder="••••••••"
                               autoComplete="current-password"
                               value={loginPass}
-                              onChange={(e) =>
-                                setLoginPass(e.target.value)
-                              }
+                              onChange={(e) => setLoginPass(e.target.value)}
                               required
                               className="pl-9"
                             />
                           </div>
                         </div>
 
-                        {/* Error */}
                         {loginError && (
                           <div className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                             {loginError}
                           </div>
                         )}
 
-                        {/* Submit */}
                         <Button
                           type="submit"
                           className="w-full h-11"
-                          disabled={loggingIn}
+                          disabled={loggingIn || googleBusy}
                         >
                           {loggingIn ? (
                             <>
@@ -418,7 +558,21 @@ export default function Home() {
                           )}
                         </Button>
 
-                        {/* Acciones secundarias */}
+                        {/* Google clásico */}
+                        <div className="space-y-2">
+                          <div
+                            id="googleBtn"
+                            className={`flex justify-center ${
+                              googleBusy ? "opacity-50 pointer-events-none" : ""
+                            }`}
+                          />
+                          {googleBusy && (
+                            <div className="text-xs text-muted-foreground text-center">
+                              Procesando Google…
+                            </div>
+                          )}
+                        </div>
+
                         <div className="flex items-center justify-between text-sm">
                           <Link
                             href="/auth/recover"
@@ -428,17 +582,16 @@ export default function Home() {
                             ¿Olvidaste tu contraseña?
                           </Link>
 
-                          {/* Modal de registro */}
                           <Dialog
                             open={openRegister}
                             onOpenChange={(v) => {
                               setOpenRegister(v);
                               setRegError(null);
                               setLoginError(null);
+                              if (v) loadUnitsOnce();
                             }}
                           >
                             <DialogTrigger asChild>
-                              {/* ⬇️ clave: evitar submit del form de login */}
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -450,7 +603,6 @@ export default function Home() {
                               </Button>
                             </DialogTrigger>
 
-                            {/* Dialog más ancho para evitar desbordes */}
                             <DialogContent className="w-[min(96vw,44rem)] sm:max-w-[44rem] md:max-w-[48rem]">
                               <DialogHeader className="space-y-1">
                                 <DialogTitle>Crear cuenta</DialogTitle>
@@ -463,24 +615,23 @@ export default function Home() {
                                 onSubmit={handleRegisterSubmit}
                                 className="space-y-4"
                               >
-                                {/* Unidad académica */}
+                                {/* Unidad académica (registro) */}
                                 <div className="space-y-2 min-w-0">
+                                  <Label className="text-sm">
+                                    Unidad académica
+                                  </Label>
                                   <Select
-                                    value={selectedUnitId}
+                                    value={regSelectedUnitId}
                                     onValueChange={(v) =>
-                                      setSelectedUnitId(v)
+                                      setRegSelectedUnitId(v)
                                     }
-                                    disabled={
-                                      unitsLoading || !!unitsError
-                                    }
+                                    disabled={unitsLoading || !!unitsError}
                                   >
                                     <SelectTrigger
                                       className="w-full max-w-full min-w-0 items-start h-auto py-2 pr-8"
                                       title={
-                                        selectedUnit
-                                          ? displayUnitLabel(
-                                              selectedUnit
-                                            )
+                                        selectedRegUnit
+                                          ? displayUnitLabel(selectedRegUnit)
                                           : undefined
                                       }
                                     >
@@ -496,7 +647,6 @@ export default function Home() {
                                       </div>
                                     </SelectTrigger>
 
-                                    {/* Dropdown amplio y con scroll */}
                                     <SelectContent className="max-h-72 overflow-y-auto max-w-[min(96vw,40rem)]">
                                       {units.map((u) => (
                                         <SelectItem
@@ -510,6 +660,7 @@ export default function Home() {
                                       ))}
                                     </SelectContent>
                                   </Select>
+
                                   {unitsError && (
                                     <p className="text-xs text-destructive">
                                       {unitsError}
@@ -517,7 +668,6 @@ export default function Home() {
                                   )}
                                 </div>
 
-                                {/* Nombre */}
                                 <div className="space-y-2">
                                   <Input
                                     id="reg-name"
@@ -525,14 +675,11 @@ export default function Home() {
                                     placeholder="Nombre y apellidos"
                                     autoComplete="name"
                                     value={regName}
-                                    onChange={(e) =>
-                                      setRegName(e.target.value)
-                                    }
+                                    onChange={(e) => setRegName(e.target.value)}
                                     required
                                   />
                                 </div>
 
-                                {/* Email + Confirmación */}
                                 <div className="grid gap-4 sm:grid-cols-2">
                                   <div className="space-y-2">
                                     <Label htmlFor="reg-email">
@@ -550,7 +697,6 @@ export default function Home() {
                                       required
                                     />
                                   </div>
-
                                   <div className="space-y-2">
                                     <Label htmlFor="reg-email2">
                                       Confirmar correo
@@ -569,7 +715,6 @@ export default function Home() {
                                   </div>
                                 </div>
 
-                                {/* Password + Confirmación */}
                                 <div className="grid gap-4 sm:grid-cols-2">
                                   <div className="space-y-2">
                                     <Label htmlFor="reg-password">
@@ -605,7 +750,6 @@ export default function Home() {
                                   </div>
                                 </div>
 
-                                {/* Error de registro */}
                                 {regError && (
                                   <div className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                                     {regError}
@@ -616,16 +760,11 @@ export default function Home() {
                                   <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() =>
-                                      setOpenRegister(false)
-                                    }
+                                    onClick={() => setOpenRegister(false)}
                                   >
                                     Cancelar
                                   </Button>
-                                  <Button
-                                    type="submit"
-                                    disabled={registering}
-                                  >
+                                  <Button type="submit" disabled={registering}>
                                     {registering ? (
                                       <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -651,6 +790,98 @@ export default function Home() {
           {/* columna derecha opcional */}
         </div>
       </section>
+
+      {/* MODAL: elegir unidad DESPUÉS de Google (solo si backend la pide) */}
+      <Dialog
+        open={openGoogleUnit}
+        onOpenChange={(v) => {
+          setOpenGoogleUnit(v);
+          if (!v) {
+            setPendingGoogleToken("");
+            setGoogleUnitId("");
+          } else {
+            loadUnitsOnce();
+          }
+        }}
+      >
+        <DialogContent className="w-[min(96vw,42rem)] sm:max-w-[42rem]">
+          <DialogHeader>
+            <DialogTitle>Selecciona tu unidad académica</DialogTitle>
+            <DialogDescription>
+              Es necesaria para completar tu registro con Google.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label className="text-sm">Unidad académica</Label>
+            <Select
+              value={googleUnitId}
+              onValueChange={(v) => setGoogleUnitId(v)}
+              disabled={unitsLoading || !!unitsError}
+            >
+              <SelectTrigger
+                className="w-full"
+                title={
+                  selectedGoogleUnit
+                    ? displayUnitLabel(selectedGoogleUnit)
+                    : undefined
+                }
+              >
+                <SelectValue
+                  placeholder={
+                    unitsLoading ? "Cargando..." : "Selecciona una unidad académica"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent className="max-h-72 overflow-y-auto">
+                {units.map((u) => (
+                  <SelectItem
+                    key={u.id}
+                    value={String(u.id)}
+                    title={displayUnitLabel(u)}
+                  >
+                    {displayUnitLabel(u)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {unitsError && <p className="text-xs text-destructive">{unitsError}</p>}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpenGoogleUnit(false)}
+              disabled={googleBusy}
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              type="button"
+              disabled={!googleUnitId || !pendingGoogleToken || googleBusy}
+              onClick={() => {
+                if (!googleUnitId || !pendingGoogleToken) return;
+                setOpenGoogleUnit(false);
+                exchangeGoogleTokenForJWT(pendingGoogleToken, Number(googleUnitId));
+                setPendingGoogleToken("");
+                setGoogleUnitId("");
+              }}
+            >
+              {googleBusy ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando…
+                </>
+              ) : (
+                "Continuar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

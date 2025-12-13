@@ -247,6 +247,8 @@ export default function PlaneacionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ✅ FIX: si el id guardado pertenece a otro usuario (Google), backend responde 404.
+  // En ese caso limpiamos localStorage y arrancamos en "Borrador" sin error fatal.
   useEffect(() => {
     if (!planeacionId) return;
     let cancel = false;
@@ -256,8 +258,33 @@ export default function PlaneacionForm({
         const res = await fetch(`${API_BASE}/planeaciones/${planeacionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok)
+
+        if (res.status === 404) {
+          if (cancel) return;
+
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem("planeacion_actual_id");
+          }
+
+          setPlaneacionId(null);
+          setPlaneacionNombre(initialNombrePlaneacion || "Borrador");
+
+          const current = form.getValues();
+          reset({
+            ...current,
+            // dejamos los defaults actuales (no destruimos lo que ya estaba en memoria del form)
+          });
+
+          setSectionProgress(computeSectionProgress(form.getValues() as PlaneacionType));
+
+          toast.message("No se encontró una planeación previa. Crea una nueva para comenzar.");
+          return;
+        }
+
+        if (!res.ok) {
           throw new Error(`No se pudo cargar la planeación (${res.status})`);
+        }
+
         const data: any = await res.json();
         if (cancel) return;
 
@@ -453,7 +480,7 @@ export default function PlaneacionForm({
       // @ts-expect-error
       org_proposito: (values as any).organizacion?.proposito ?? "",
       // @ts-expect-error
-      org_estrategia: (values as any).organizacion?.estrategia ?? "",
+      org_estrategia: (values as any).organizacion?.organizacion?.estrategia ?? (values as any).organizacion?.estrategia ?? "",
       // @ts-expect-error
       org_metodos: (values as any).organizacion?.metodos ?? "",
       // @ts-expect-error
@@ -595,7 +622,6 @@ export default function PlaneacionForm({
 
       const data = await res.json();
 
-      // ✅ Si fue creación, tu backend devuelve { id }
       if (!planeacionId && data?.id) {
         const newId = Number(data.id);
         if (!Number.isNaN(newId) && newId > 0) {
@@ -603,7 +629,6 @@ export default function PlaneacionForm({
           if (typeof window !== "undefined") {
             window.localStorage.setItem("planeacion_actual_id", String(newId));
           }
-          // ✅ avisa al dashboard para quitar “Sin guardar aún”
           onCreated?.(newId);
         }
       }
@@ -618,7 +643,6 @@ export default function PlaneacionForm({
           : "Planeación guardada correctamente."
       );
 
-      // ✅ refresca lista SIEMPRE que guardas
       onSaved?.();
 
       return true;
@@ -674,9 +698,7 @@ export default function PlaneacionForm({
     let changed = false;
 
     if (values.sesiones_por_semestre !== sumSesiones) {
-      toast.warning(
-        ""
-      );
+      toast.warning("");
       setValue("sesiones_por_semestre", sumSesiones, {
         shouldDirty: true,
         shouldValidate: false,
@@ -685,9 +707,7 @@ export default function PlaneacionForm({
     }
 
     if ((values.horas_por_semestre?.total ?? 0) !== sumHoras) {
-      toast.warning(
-        ""
-      );
+      toast.warning("");
       setValue("horas_por_semestre.total", sumHoras, {
         shouldDirty: true,
         shouldValidate: false,
@@ -757,7 +777,6 @@ export default function PlaneacionForm({
                         Finalizada · solo lectura
                       </Badge>
                     )}
-
                   </div>
                 </div>
 
@@ -953,7 +972,6 @@ export default function PlaneacionForm({
                   </div>
 
                   <Accordion type="multiple" defaultValue={["ut-0"]} className="space-y-2">
-
                     {ut.fields.map((f, idx) => (
                       <AccordionItem
                         key={f.id}
@@ -1009,8 +1027,8 @@ export default function PlaneacionForm({
                         focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
                         focus-visible:ring-offset-2
                         disabled:opacity-50 disabled:shadow-none
-                      "             
-                        onClick={async () => {
+                      "
+                      onClick={async () => {
                         const lastIdx = ut.fields.length - 1;
                         if (lastIdx >= 0) {
                           const ok = await trigger(
@@ -1019,9 +1037,7 @@ export default function PlaneacionForm({
                           );
                           if (!ok) {
                             toast.error(
-                              `Completa la Unidad Temática ${
-                                lastIdx + 1
-                              } antes de crear otra.`
+                              `Completa la Unidad Temática ${lastIdx + 1} antes de crear otra.`
                             );
                             return;
                           }

@@ -125,7 +125,21 @@ export default function Referencias({ unidadesCount, readOnly = false }: Props) 
               <div className="flex justify-end">
                 <Button
                   type="button"
-                  variant="outline"
+                  className="
+                        h-9 px-4
+                        rounded-xl
+                        bg-[#5A1236] text-white border border-[#5A1236]
+                        text-sm font-medium
+                        shadow-sm shadow-[#5A1236]/25
+                        transition-all duration-150
+                        hover:bg-[#741845]
+                        hover:shadow-md hover:shadow-[#5A1236]/30
+                        active:scale-[0.98]
+                        focus-visible:outline-none
+                        focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
+                        focus-visible:ring-offset-2
+                        disabled:opacity-50 disabled:shadow-none
+                      "             
                   onClick={() => refs.remove(i)}
                   disabled={readOnly}
                 >
@@ -139,7 +153,21 @@ export default function Referencias({ unidadesCount, readOnly = false }: Props) 
 
       <Button
         type="button"
-        variant="outline"
+        className="
+                        h-9 px-4
+                        rounded-xl
+                        bg-[#5A1236] text-white border border-[#5A1236]
+                        text-sm font-medium
+                        shadow-sm shadow-[#5A1236]/25
+                        transition-all duration-150
+                        hover:bg-[#741845]
+                        hover:shadow-md hover:shadow-[#5A1236]/30
+                        active:scale-[0.98]
+                        focus-visible:outline-none
+                        focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
+                        focus-visible:ring-offset-2
+                        disabled:opacity-50 disabled:shadow-none
+                      "             
         onClick={() =>
           refs.append({
             cita_apa: "",
