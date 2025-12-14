@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -166,6 +167,19 @@ func getClaimsFromHeader(c *gin.Context) (*PlaneacionClaims, error) {
 }
 
 // =============================
+// Slug helpers (para URL pública)
+// =============================
+
+var reSlug = regexp.MustCompile(`[^a-z0-9]+`)
+
+func slugify(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = reSlug.ReplaceAllString(s, "-")
+	s = strings.Trim(s, "-")
+	return s
+}
+
+// =============================
 // GET /api/planeaciones
 // Lista SOLO las planeaciones del docente autenticado
 // =============================
@@ -307,6 +321,10 @@ SELECT json_build_object(
   'created_at', p.created_at,
   'updated_at', p.updated_at,
   'secciones_completas', p.secciones_completas,
+
+  -- ✅ SLUG + finalizada_at (NUEVO, no rompe nada)
+  'slug', p.slug,
+  'finalizada_at', p.finalizada_at,
 
   -- Datos generales
   'periodo_escolar', dg.periodo,
@@ -584,6 +602,84 @@ WHERE id = $6 AND docente_id = $7
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo actualizar planeación: " + err.Error()})
 		return
+	}
+
+	// ==========================================================
+	// ✅ SLUG + finalizada_at (NUEVO, no rompe lo existente)
+	// - Solo si el cliente manda status="finalizada"
+	// - Genera slug solo si está vacío/NULL
+	// - finalizada_at solo si estaba NULL
+	// ==========================================================
+	if body.Status != nil && strings.TrimSpace(*body.Status) == "finalizada" {
+		var (
+			existingSlug *string
+			nombre       string
+			asignatura   *string
+			finalizadaAt *time.Time
+		)
+
+		err := tx.QueryRow(
+			c,
+			`
+			SELECT slug, nombre_planeacion, asignatura, finalizada_at
+			FROM planeaciones
+			WHERE id = $1 AND docente_id = $2
+			`,
+			id,
+			claims.UserID,
+		).Scan(&existingSlug, &nombre, &asignatura, &finalizadaAt)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo leer slug: " + err.Error()})
+			return
+		}
+
+		needsSlug := existingSlug == nil || strings.TrimSpace(*existingSlug) == ""
+		if needsSlug {
+			asig := ""
+			if asignatura != nil {
+				asig = strings.TrimSpace(*asignatura)
+			}
+			base := strings.TrimSpace(nombre)
+			// slug estable + único (incluye id)
+			newSlug := slugify(base + "-" + asig + "-" + strconv.Itoa(id))
+
+			_, err = tx.Exec(
+				c,
+				`
+				UPDATE planeaciones
+				SET
+				  slug = $1,
+				  finalizada_at = COALESCE(finalizada_at, now()),
+				  updated_at = now()
+				WHERE id = $2 AND docente_id = $3
+				`,
+				newSlug,
+				id,
+				claims.UserID,
+			)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo guardar slug: " + err.Error()})
+				return
+			}
+		} else {
+			// Ya tenía slug, pero aseguro finalizada_at si estaba NULL
+			_, err = tx.Exec(
+				c,
+				`
+				UPDATE planeaciones
+				SET
+				  finalizada_at = COALESCE(finalizada_at, now()),
+				  updated_at = now()
+				WHERE id = $1 AND docente_id = $2
+				`,
+				id,
+				claims.UserID,
+			)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo fijar finalizada_at: " + err.Error()})
+				return
+			}
+		}
 	}
 
 	cmd, err := tx.Exec(

@@ -66,6 +66,11 @@ func SetupRouter(db *pgxpool.Pool) *gin.Engine {
 	unidadesHandler := &handlers.UnidadesHandler{DB: db}
 	handlers.RegisterUnidadesRoutes(api, unidadesHandler)
 
+	// ✅ ---- PLANEACIONES PÚBLICAS (sin sesión) ----
+	publicPlaneacionesHandler := &handlers.PublicPlaneacionesHandler{DB: db}
+	handlers.RegisterPublicPlaneacionesRoutes(api, publicPlaneacionesHandler)
+
+
 	// ==========================
 	// Grupo PROTEGIDO
 	// ==========================
