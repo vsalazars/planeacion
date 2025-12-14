@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"regexp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -31,6 +31,7 @@ func RegisterPlaneacionesRoutes(rg *gin.RouterGroup, h *PlaneacionesHandler) {
 	g.POST("", h.Create)    // POST /api/planeaciones
 	g.GET("/:id", h.GetOne) // GET /api/planeaciones/:id
 	g.PUT("/:id", h.Update) // PUT /api/planeaciones/:id
+	g.POST("/:id/reabrir", h.Reabrir) // ✅ NUEVO: POST /api/planeaciones/:id/reabrir
 	g.DELETE("/:id", h.Delete)
 }
 
@@ -483,22 +484,105 @@ WHERE p.id = $1 AND p.docente_id = $2
 }
 
 // =============================
+// POST /api/planeaciones/:id/reabrir
+// ✅ Reabre una planeación finalizada para permitir edición.
+// - status: borrador
+// - finalizada_at: NULL
+// - updated_at: now()
+// - slug se conserva (no afecta URL pública)
+// =============================
+
+func (h *PlaneacionesHandler) Reabrir(c *gin.Context) {
+	claims, err := getClaimsFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id inválido"})
+		return
+	}
+
+	tx, err := h.DB.BeginTx(c, pgx.TxOptions{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo iniciar transacción: " + err.Error()})
+		return
+	}
+	defer tx.Rollback(c)
+
+	var status string
+	err = tx.QueryRow(
+		c,
+		`SELECT status FROM planeaciones WHERE id = $1 AND docente_id = $2`,
+		id,
+		claims.UserID,
+	).Scan(&status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Planeación no encontrada o no pertenece al usuario"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB error: " + err.Error()})
+		return
+	}
+
+	status = strings.TrimSpace(strings.ToLower(status))
+	if status != "finalizada" {
+		// idempotente “amable”: si ya está borrador, no falla
+		if status == "borrador" {
+			c.JSON(http.StatusOK, gin.H{"ok": true, "status": "borrador"})
+			return
+		}
+		// si existieran otros estados a futuro:
+		c.JSON(http.StatusConflict, gin.H{"error": "La planeación no está finalizada."})
+		return
+	}
+
+	_, err = tx.Exec(
+		c,
+		`
+UPDATE planeaciones
+SET
+  status = 'borrador',
+  finalizada_at = NULL,
+  updated_at = now()
+WHERE id = $1 AND docente_id = $2
+		`,
+		id,
+		claims.UserID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo reabrir la planeación: " + err.Error()})
+		return
+	}
+
+	if err := tx.Commit(c); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo confirmar transacción: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true, "status": "borrador"})
+}
+
+// =============================
 // PUT /api/planeaciones/:id
 // Actualiza campos de planeaciones + tablas por sección
 // =============================
 
 type updatePlaneacionRequest struct {
-	NombrePlaneacion        *string  `json:"nombre_planeacion"`
-	Status                  *string  `json:"status"`
-	PeriodoEscolar          *string  `json:"periodo_escolar"`
-	PlanEstudiosAnio        *int     `json:"plan_estudios_anio"`
-	SemestreNivel           *string  `json:"semestre_nivel"`
-	Grupos                  *string  `json:"grupos"`
-	ProgramaAcademico       *string  `json:"programa_academico"`
-	Academia                *string  `json:"academia"`
-	UnidadAprendizajeNombre *string  `json:"unidad_aprendizaje_nombre"`
-	AreaFormacion           *string  `json:"area_formacion"`
-	Modalidad               *string  `json:"modalidad"`
+	NombrePlaneacion        *string `json:"nombre_planeacion"`
+	Status                  *string `json:"status"`
+	PeriodoEscolar          *string `json:"periodo_escolar"`
+	PlanEstudiosAnio        *int    `json:"plan_estudios_anio"`
+	SemestreNivel           *string `json:"semestre_nivel"`
+	Grupos                  *string `json:"grupos"`
+	ProgramaAcademico       *string `json:"programa_academico"`
+	Academia                *string `json:"academia"`
+	UnidadAprendizajeNombre *string `json:"unidad_aprendizaje_nombre"`
+	AreaFormacion           *string `json:"area_formacion"`
+	Modalidad               *string `json:"modalidad"`
 
 	SesionesPorSemestre *int `json:"sesiones_por_semestre"`
 	SesionesAula        *int `json:"sesiones_aula"`
@@ -533,7 +617,7 @@ type updatePlaneacionRequest struct {
 	PlagioTurnitin    *bool   `json:"plagio_turnitin"`
 	PlagioOtro        *string `json:"plagio_otro"`
 
-	Referencias       *[]ReferenciaPayload      `json:"referencias"`
+	Referencias       *[]ReferenciaPayload     `json:"referencias"`
 	UnidadesTematicas *[]UnidadTematicaPayload `json:"unidades_tematicas"`
 }
 
@@ -563,18 +647,33 @@ func (h *PlaneacionesHandler) Update(c *gin.Context) {
 	}
 	defer tx.Rollback(c)
 
-	var exists bool
-	if err := tx.QueryRow(
+	// ✅ existencia + status actual (para bloquear edición si está finalizada)
+	var currentStatus string
+	err = tx.QueryRow(
 		c,
-		`SELECT EXISTS(SELECT 1 FROM planeaciones WHERE id = $1 AND docente_id = $2)`,
+		`SELECT status FROM planeaciones WHERE id = $1 AND docente_id = $2`,
 		id,
 		claims.UserID,
-	).Scan(&exists); err != nil {
+	).Scan(&currentStatus)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Planeación no encontrada o no pertenece al usuario"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error verificando planeación: " + err.Error()})
 		return
 	}
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Planeación no encontrada o no pertenece al usuario"})
+
+	cur := strings.TrimSpace(strings.ToLower(currentStatus))
+	if cur == "finalizada" {
+		// Si está finalizada, NO se permite editar vía PUT
+		// (reabrir primero con POST /:id/reabrir)
+		// Permitimos explícitamente que el cliente intente cambiar status a borrador,
+		// pero lo dejamos “limpio” forzando a usar /reabrir.
+		c.JSON(http.StatusConflict, gin.H{
+			"error": "Planeación finalizada. Para editar debes reabrirla primero.",
+			"hint":  "POST /api/planeaciones/:id/reabrir",
+		})
 		return
 	}
 
@@ -640,7 +739,6 @@ WHERE id = $6 AND docente_id = $7
 				asig = strings.TrimSpace(*asignatura)
 			}
 			base := strings.TrimSpace(nombre)
-			// slug estable + único (incluye id)
 			newSlug := slugify(base + "-" + asig + "-" + strconv.Itoa(id))
 
 			_, err = tx.Exec(
@@ -662,7 +760,6 @@ WHERE id = $6 AND docente_id = $7
 				return
 			}
 		} else {
-			// Ya tenía slug, pero aseguro finalizada_at si estaba NULL
 			_, err = tx.Exec(
 				c,
 				`
@@ -1003,7 +1100,6 @@ INSERT INTO planeacion_referencias (
 	if body.UnidadesTematicas != nil {
 		uts := *body.UnidadesTematicas
 
-		// Al menos una unidad temática en el payload
 		if len(uts) == 0 {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Debes registrar al menos una unidad temática.",
@@ -1011,7 +1107,6 @@ INSERT INTO planeacion_referencias (
 			return
 		}
 
-		// Validaciones suaves: solo porcentajes
 		for _, ut := range uts {
 			sumPct := 0
 			for _, b := range ut.Bloques {
@@ -1031,7 +1126,6 @@ INSERT INTO planeacion_referencias (
 			}
 		}
 
-		// Borrar unidades y sesiones previas de esta planeación
 		_, err = tx.Exec(
 			c,
 			`DELETE FROM unidades_tematicas WHERE planeacion_id = $1`,
@@ -1043,11 +1137,8 @@ INSERT INTO planeacion_referencias (
 			})
 			return
 		}
-		// sesiones_didacticas se borran en cascada por FK ON DELETE CASCADE
 
-		// Insertar nuevas unidades y sus bloques
 		for _, ut := range uts {
-			// Normalizar fechas
 			var perDel, perAl *string
 			if ut.PeriodoDesarrollo.Del != nil {
 				s := strings.TrimSpace(*ut.PeriodoDesarrollo.Del)
@@ -1062,7 +1153,6 @@ INSERT INTO planeacion_referencias (
 				}
 			}
 
-			// Porcentaje de la unidad
 			sumPct := 0
 			for _, b := range ut.Bloques {
 				sumPct += b.ValorPorcentual
@@ -1146,7 +1236,6 @@ RETURNING id
 				return
 			}
 
-			// Insert de sesiones / bloques
 			for _, b := range ut.Bloques {
 				_, err = tx.Exec(
 					c,

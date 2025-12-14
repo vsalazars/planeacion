@@ -58,6 +58,24 @@ function parseYmdToLocalDate(v?: string) {
   return v && String(v).trim() ? new Date(`${v}T00:00:00`) : undefined;
 }
 
+/** ====== FIX SÓLIDO: string[] <-> string para Textarea ====== */
+function arrToSemiString(v: unknown): string {
+  if (!Array.isArray(v)) return "";
+  return v
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean)
+    .join("; ");
+}
+function semiStringToArr(v: unknown): string[] {
+  if (typeof v !== "string") return [];
+  const t = v.trim();
+  if (!t) return [];
+  return t
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 // ---------- Item de bloque (sesión) ----------
 function BloqueItem({
   path,
@@ -74,7 +92,7 @@ function BloqueItem({
   renumerarDespues: () => void;
   readOnly?: boolean;
 }) {
-  const { register, setValue } = useFormContext<PlaneacionType>();
+  const { register, setValue, control } = useFormContext<PlaneacionType>();
 
   // Guarda el número de sesión consecutivo
   useEffect(() => {
@@ -141,45 +159,38 @@ function BloqueItem({
         </div>
       </div>
 
+      {/* ✅ FIX sólido: estos 3 campos se controlan como string en UI y se guardan como string[] */}
       <div className="grid sm:grid-cols-2 gap-2">
         <div>
           <Label>Recursos didácticos</Label>
-          <Textarea
-            rows={2}
-            placeholder="Libro X; Video Y; Software Z"
-            {...register(`${path}.recursos` as const, {
-              setValueAs: (v: string) => {
-                if (typeof v !== "string") return v;
-                const t = v.trim();
-                return t
-                  ? t
-                      .split(";")
-                      .map((s) => s.trim())
-                      .filter(Boolean)
-                  : [];
-              },
-            })}
-            readOnly={readOnly}
+          <Controller
+            control={control}
+            name={`${path}.recursos` as any}
+            render={({ field }) => (
+              <Textarea
+                rows={2}
+                placeholder="Libro X; Video Y; Software Z"
+                value={arrToSemiString(field.value)}
+                onChange={(e) => field.onChange(semiStringToArr(e.target.value))}
+                readOnly={readOnly}
+              />
+            )}
           />
         </div>
         <div>
           <Label>Evidencias de aprendizaje</Label>
-          <Textarea
-            rows={2}
-            placeholder="Reporte; Exposición"
-            {...register(`${path}.evidencias` as const, {
-              setValueAs: (v: string) => {
-                if (typeof v !== "string") return v;
-                const t = v.trim();
-                return t
-                  ? t
-                      .split(";")
-                      .map((s) => s.trim())
-                      .filter(Boolean)
-                  : [];
-              },
-            })}
-            readOnly={readOnly}
+          <Controller
+            control={control}
+            name={`${path}.evidencias` as any}
+            render={({ field }) => (
+              <Textarea
+                rows={2}
+                placeholder="Reporte; Exposición"
+                value={arrToSemiString(field.value)}
+                onChange={(e) => field.onChange(semiStringToArr(e.target.value))}
+                readOnly={readOnly}
+              />
+            )}
           />
         </div>
       </div>
@@ -187,22 +198,18 @@ function BloqueItem({
       <div className="grid sm:grid-cols-2 gap-2">
         <div>
           <Label>Instrumentos de evaluación</Label>
-          <Textarea
-            rows={2}
-            placeholder="Rúbrica; Lista de cotejo"
-            {...register(`${path}.instrumentos` as const, {
-              setValueAs: (v: string) => {
-                if (typeof v !== "string") return v;
-                const t = v.trim();
-                return t
-                  ? t
-                      .split(";")
-                      .map((s) => s.trim())
-                      .filter(Boolean)
-                  : [];
-              },
-            })}
-            readOnly={readOnly}
+          <Controller
+            control={control}
+            name={`${path}.instrumentos` as any}
+            render={({ field }) => (
+              <Textarea
+                rows={2}
+                placeholder="Rúbrica; Lista de cotejo"
+                value={arrToSemiString(field.value)}
+                onChange={(e) => field.onChange(semiStringToArr(e.target.value))}
+                readOnly={readOnly}
+              />
+            )}
           />
         </div>
         <div>
@@ -251,7 +258,7 @@ function BloqueItem({
                         focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
                         focus-visible:ring-offset-2
                         disabled:opacity-50 disabled:shadow-none
-                      "             
+                      "
               disabled={readOnly} // 👈 no eliminar en solo lectura
             >
               Eliminar sesión
@@ -363,7 +370,13 @@ export default function UnidadTematica({
       Number(h.clinica || 0) +
       Number(h.otro || 0)
     );
-  }, [horas?.aula, horas?.laboratorio, horas?.taller, horas?.clinica, horas?.otro]);
+  }, [
+    horas?.aula,
+    horas?.laboratorio,
+    horas?.taller,
+    horas?.clinica,
+    horas?.otro,
+  ]);
 
   const totalValor = useMemo(
     () =>
@@ -569,7 +582,6 @@ export default function UnidadTematica({
                         locale={es}
                         weekStartsOn={1}
                       />
-
                     </PopoverContent>
                   </Popover>
                 );
@@ -788,7 +800,7 @@ export default function UnidadTematica({
                         focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
                         focus-visible:ring-offset-2
                         disabled:opacity-50 disabled:shadow-none
-                      "             
+                      "
                 onClick={() => aprendizajes.remove(i)}
                 disabled={readOnly}
               >
@@ -812,7 +824,7 @@ export default function UnidadTematica({
                         focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
                         focus-visible:ring-offset-2
                         disabled:opacity-50 disabled:shadow-none
-                      "             
+                      "
             onClick={() => aprendizajes.append("")}
             disabled={readOnly}
           >
@@ -861,7 +873,7 @@ export default function UnidadTematica({
                         focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
                         focus-visible:ring-offset-2
                         disabled:opacity-50 disabled:shadow-none
-                      "             
+                      "
               disabled={readOnly}
               onClick={async () => {
                 if (readOnly) return;
@@ -952,7 +964,7 @@ export default function UnidadTematica({
                         focus-visible:ring-2 focus-visible:ring-[#5A1236]/30
                         focus-visible:ring-offset-2
                         disabled:opacity-50 disabled:shadow-none
-                      "             
+                      "
               disabled={readOnly}
               onClick={async () => {
                 if (readOnly) return;
