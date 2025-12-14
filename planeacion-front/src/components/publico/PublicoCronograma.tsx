@@ -215,14 +215,32 @@ export default function PublicoCronograma({
   return (
     <Card className="p-4 sm:p-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <CalendarRange className="h-4 w-4 text-muted-foreground" />
-          <div className="font-semibold">Cronograma (Gantt · días hábiles)</div>
+       <div className="flex items-center gap-3">
+          <div
+            className="rounded-xl border p-2"
+            style={{
+              borderColor: "rgba(122,0,60,0.20)",
+              background: "rgba(122,0,60,0.08)",
+            }}
+          >
+            <CalendarRange className="h-4 w-4" style={{ color: IPN_GUINDA }} />
+          </div>
+
+          <div>
+            <div className="font-semibold leading-none">
+              Cronograma
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Gantt · días hábiles
+            </div>
+          </div>
         </div>
+
+
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="text-xs">
-            {unidades.length} unidades
+            {unidades.length} unidades temáticas
           </Badge>
 
           {global ? (
@@ -235,9 +253,7 @@ export default function PublicoCronograma({
             </Badge>
           )}
 
-          <Badge variant="secondary" className="text-xs">
-            columnas: L–V ({days.length})
-          </Badge>
+     
 
           <Badge
             variant="outline"
@@ -278,7 +294,7 @@ export default function PublicoCronograma({
                     style={{ width: leftColsW }}
                   >
                     <div className="h-9 px-3 flex items-center justify-between">
-                      <div className="text-xs text-muted-foreground">Unidad</div>
+                      <div className="text-xs text-muted-foreground">Unidad temática</div>
                       <div className="text-xs text-muted-foreground">Periodo</div>
                     </div>
                   </div>
@@ -483,7 +499,7 @@ export default function PublicoCronograma({
               </div>
 
               <div className="p-3 text-xs text-muted-foreground">
-                * Se excluyen sábados y domingos. La columna de <span style={{ color: IPN_GUINDA, fontWeight: 600 }}>HOY</span> se resalta en guinda IPN.
+                * Se excluyen sábados y domingos.
               </div>
             </div>
           </div>

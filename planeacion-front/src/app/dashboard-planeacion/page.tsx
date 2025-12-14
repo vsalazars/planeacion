@@ -82,7 +82,7 @@ export default async function DashboardPlaneacionPage() {
             {/* Izquierda: logo + sistema */}
             <div className="flex items-center gap-3">
               <img
-                src="/logo.jpg"
+                src="/logo.png"
                 alt="Instituto Politécnico Nacional"
                 className="h-13 w-auto rounded-md bg-background object-contain"
               />

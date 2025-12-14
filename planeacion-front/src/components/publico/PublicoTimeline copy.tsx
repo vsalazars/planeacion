@@ -58,29 +58,6 @@ function txt(v: any): string {
   return s;
 }
 
-/** ✅ normaliza aprendizajes a bullets (array o string con comas / saltos) */
-function parseAprendizajes(v: any): string[] {
-  if (Array.isArray(v)) {
-    return v.map((x) => txt(x)).filter(Boolean);
-  }
-
-  const s = txt(v);
-  if (!s) return [];
-
-  // intenta separar por líneas; si no hay, por comas/punto y coma
-  const byLines = s
-    .split(/\r?\n+/g)
-    .map((x) => x.trim())
-    .filter(Boolean);
-
-  if (byLines.length >= 2) return byLines;
-
-  return s
-    .split(/[;,]+/g)
-    .map((x) => x.trim())
-    .filter(Boolean);
-}
-
 function sumHoras(ut: UT) {
   const h = (ut as any)?.horas ?? {};
   return n(h.aula) + n(h.laboratorio) + n(h.taller) + n(h.clinica) + n(h.otro);
@@ -143,7 +120,6 @@ function MetricPill({
   );
 }
 
-/** ✅ chips “Aula / 2” en 2 columnas, y valores alineados */
 function MiniChipsRow({
   title,
   icon,
@@ -157,35 +133,33 @@ function MiniChipsRow({
   const show = hasAny ? items.filter((x) => x.v > 0) : items;
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2">
-        <div
-          className="shrink-0 rounded-lg border p-1.5 text-muted-foreground"
-          style={{ borderColor: SOFT_BORDER, background: "rgba(0,0,0,0.02)" }}
-        >
-          {icon}
-        </div>
+    <div className="flex items-start gap-3">
+      <div
+        className="mt-0.5 shrink-0 rounded-lg border p-1.5 text-muted-foreground"
+        style={{ borderColor: SOFT_BORDER, background: "rgba(0,0,0,0.02)" }}
+      >
+        {icon}
+      </div>
 
+      <div className="min-w-0 flex-1">
         <div className="text-[11px] font-semibold text-muted-foreground">
           {title}
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-1.5">
-        {show.map((x) => (
-          <Badge
-            key={x.k}
-            variant="secondary"
-            className="text-[11px] font-medium justify-between"
-            style={{
-              background: "rgba(0,0,0,0.04)",
-              border: `1px solid ${SOFT_BORDER}`,
-            }}
-          >
-            <span className="truncate">{x.k}</span>
-            <span className="font-semibold tabular-nums">{x.v}</span>
-          </Badge>
-        ))}
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {show.map((x) => (
+            <Badge
+              key={x.k}
+              variant="secondary"
+              className="text-[11px] font-medium"
+              style={{
+                background: "rgba(0,0,0,0.04)",
+                border: `1px solid ${SOFT_BORDER}`,
+              }}
+            >
+              {x.k}: {x.v}
+            </Badge>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -206,28 +180,6 @@ function DetailBlock({
         {label}
       </div>
       <div className="text-sm whitespace-pre-wrap leading-relaxed">{v}</div>
-    </div>
-  );
-}
-
-/** ✅ bullets para aprendizajes */
-function AprendizajesBlock({ value }: { value: any }) {
-  const items = parseAprendizajes(value);
-  if (!items.length) return null;
-
-  return (
-    <div className="space-y-1">
-      <div className="text-[11px] font-semibold text-muted-foreground">
-        Aprendizajes esperados
-      </div>
-
-      <ul className="list-disc pl-5 text-sm leading-relaxed space-y-1">
-        {items.map((it, i) => (
-          <li key={`${it}-${i}`} className="whitespace-pre-wrap">
-            {it}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
@@ -365,9 +317,7 @@ export default function PublicoTimeline({
             <MetricPill
               icon={<Dot className="h-4 w-4" />}
               label="Vigente"
-              value={`Unidad ${
-                (unidadesSorted[activeIndex] as any)?.numero ?? activeIndex + 1
-              }`}
+              value={`Unidad ${(unidadesSorted[activeIndex] as any)?.numero ?? activeIndex + 1}`}
               tone="accent"
             />
           ) : null}
@@ -399,16 +349,6 @@ export default function PublicoTimeline({
 
             const totalHoras = sumHoras(ut);
             const sesionesDev = sesionesDesarrolladas(ut);
-
-            const unidadCompetencia = txt((ut as any)?.unidad_competencia);
-            const aprendizajesRaw = (ut as any)?.aprendizajes_esperados;
-            const precisiones = txt((ut as any)?.precisiones);
-
-            const hasTextBlocks = Boolean(
-              unidadCompetencia ||
-                parseAprendizajes(aprendizajesRaw).length ||
-                precisiones
-            );
 
             return (
               <div key={id} className="relative group">
@@ -504,68 +444,33 @@ export default function PublicoTimeline({
                       </div>
                     </div>
 
-                    {/* ✅ ACOMODO: 3/4 texto, 1/4 chips */}
-                    {(hasTextBlocks || true) && (
-                      <div className="mt-4 grid gap-4 md:grid-cols-12">
-                        {/* 3/4 */}
-                        <div className="md:col-span-9">
-                          <div
-                            className="rounded-2xl border p-4 space-y-3"
-                            style={{
-                              borderColor: SOFT_BORDER,
-                              background: "rgba(0,0,0,0.02)",
-                            }}
-                          >
-                            <DetailBlock
-                              label="Unidad de competencia"
-                              value={unidadCompetencia}
-                            />
+                    <div className="mt-4 space-y-3">
+                      <MiniChipsRow
+                        title="Horas por espacio"
+                        icon={<Clock className="h-4 w-4" />}
+                        items={[
+                          { k: "Aula", v: n(horasObj.aula) },
+                          { k: "Lab", v: n(horasObj.laboratorio) },
+                          { k: "Taller", v: n(horasObj.taller) },
+                          { k: "Clínica", v: n(horasObj.clinica) },
+                          { k: "Otro", v: n(horasObj.otro) },
+                          { k: "Total", v: totalHoras },
+                        ]}
+                      />
 
-                            {/* ✅ BULLETS */}
-                            <AprendizajesBlock value={aprendizajesRaw} />
-
-                            <DetailBlock label="Precisiones" value={precisiones} />
-                          </div>
-                        </div>
-
-                        {/* 1/4 */}
-                        <div className="md:col-span-3">
-                          <div
-                            className="rounded-2xl border p-4 space-y-3"
-                            style={{
-                              borderColor: SOFT_BORDER,
-                              background: "rgba(255,255,255,0.65)",
-                            }}
-                          >
-                            <MiniChipsRow
-                              title="Horas por espacio"
-                              icon={<Clock className="h-4 w-4" />}
-                              items={[
-                                { k: "Aula", v: n(horasObj.aula) },
-                                { k: "Lab", v: n(horasObj.laboratorio) },
-                                { k: "Taller", v: n(horasObj.taller) },
-                                { k: "Clínica", v: n(horasObj.clinica) },
-                                { k: "Otro", v: n(horasObj.otro) },
-                                { k: "Total", v: totalHoras },
-                              ]}
-                            />
-
-                            <MiniChipsRow
-                              title="Sesiones por espacio"
-                              icon={<Layers className="h-4 w-4" />}
-                              items={[
-                                { k: "Aula", v: n(sesionesObj.aula) },
-                                { k: "Lab", v: n(sesionesObj.laboratorio) },
-                                { k: "Taller", v: n(sesionesObj.taller) },
-                                { k: "Clínica", v: n(sesionesObj.clinica) },
-                                { k: "Otro", v: n(sesionesObj.otro) },
-                                { k: "Total", v: sumSesionesPorEspacio(ut) },
-                              ]}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                      <MiniChipsRow
+                        title="Sesiones por espacio"
+                        icon={<Layers className="h-4 w-4" />}
+                        items={[
+                          { k: "Aula", v: n(sesionesObj.aula) },
+                          { k: "Lab", v: n(sesionesObj.laboratorio) },
+                          { k: "Taller", v: n(sesionesObj.taller) },
+                          { k: "Clínica", v: n(sesionesObj.clinica) },
+                          { k: "Otro", v: n(sesionesObj.otro) },
+                          { k: "Total", v: sumSesionesPorEspacio(ut) },
+                        ]}
+                      />
+                    </div>
 
                     <Separator className="my-4" />
 
@@ -614,7 +519,9 @@ export default function PublicoTimeline({
                   </span>
                 </DialogTitle>
 
-                <DialogDescription>Sesiones didácticas registradas.</DialogDescription>
+                <DialogDescription>
+                  Competencia, aprendizajes, precisiones y sesiones didácticas.
+                </DialogDescription>
 
                 <div className="mt-2 flex items-center justify-end gap-2">
                   <Button
@@ -644,6 +551,27 @@ export default function PublicoTimeline({
 
               <ScrollArea className="max-h-[70vh] pr-3">
                 <div className="space-y-3">
+                  <div
+                    className="rounded-2xl border p-4 space-y-3"
+                    style={{
+                      borderColor: SOFT_BORDER,
+                      background: "rgba(0,0,0,0.02)",
+                    }}
+                  >
+                    <DetailBlock
+                      label="Unidad de competencia"
+                      value={txt((current as any)?.unidad_competencia)}
+                    />
+                    <DetailBlock
+                      label="Aprendizajes esperados"
+                      value={txt((current as any)?.aprendizajes_esperados)}
+                    />
+                    <DetailBlock
+                      label="Precisiones"
+                      value={txt((current as any)?.precisiones)}
+                    />
+                  </div>
+
                   {(((current as any)?.bloques ?? []) as Bloque[]).length === 0 ? (
                     <div className="text-sm text-muted-foreground">
                       (Esta unidad no tiene sesiones registradas.)

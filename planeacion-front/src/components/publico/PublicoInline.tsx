@@ -20,7 +20,8 @@ import {
   Users,
   Clock3,
   BookMarked,
-} from "lucide-react";
+  FileText,
+  } from "lucide-react";
 import { toast } from "sonner";
 
 import PublicoCronograma from "./PublicoCronograma";
@@ -50,7 +51,12 @@ type Bloque = {
   numero_sesion: number;
   temas_subtemas: string;
   valor_porcentual: number;
-  actividades?: { inicio?: string; desarrollo?: string; cierre?: string; [k: string]: any };
+  actividades?: {
+    inicio?: string;
+    desarrollo?: string;
+    cierre?: string;
+    [k: string]: any;
+  };
   evidencias?: string[];
   instrumentos?: string[];
   recursos?: string[];
@@ -65,7 +71,13 @@ type UnidadTematica = {
   precisiones?: string;
   porcentaje?: number;
   periodo_desarrollo?: { del?: string; al?: string } | null;
-  horas?: { aula?: number; clinica?: number; laboratorio?: number; otro?: number; taller?: number };
+  horas?: {
+    aula?: number;
+    clinica?: number;
+    laboratorio?: number;
+    otro?: number;
+    taller?: number;
+  };
   sesiones_totales?: number;
   aprendizajes_esperados?: string[];
   bloques?: Bloque[];
@@ -165,7 +177,9 @@ function DenseKV({
         {icon ? <span className="shrink-0">{icon}</span> : null}
         <span className="truncate">{label}</span>
       </div>
-      <div className="mt-1 text-sm font-medium break-words leading-snug">{value}</div>
+      <div className="mt-1 text-sm font-medium break-words leading-snug">
+        {value}
+      </div>
     </div>
   );
 }
@@ -259,7 +273,8 @@ export default function PublicoInline() {
         setDetail(null);
       }
     } catch (e: any) {
-      if (e?.name !== "AbortError") toast.error(e?.message || "No se pudo buscar.");
+      if (e?.name !== "AbortError")
+        toast.error(e?.message || "No se pudo buscar.");
     } finally {
       if (abortSearchRef.current === controller) setLoading(false);
     }
@@ -298,10 +313,14 @@ export default function PublicoInline() {
       setDetail(data ?? null);
 
       requestAnimationFrame(() => {
-        detailAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        detailAnchorRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       });
     } catch (e: any) {
-      if (e?.name !== "AbortError") toast.error(e?.message || "No se pudo cargar el detalle.");
+      if (e?.name !== "AbortError")
+        toast.error(e?.message || "No se pudo cargar el detalle.");
     } finally {
       if (abortDetailRef.current === controller) setLoadingDetail(false);
     }
@@ -339,10 +358,9 @@ export default function PublicoInline() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Search className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold truncate">Búsqueda pública</h2>
-            <Badge variant="secondary" className="shrink-0">
-              finalizadas
-            </Badge>
+            <h2 className="text-lg font-semibold truncate">
+              Búsqueda de planeación didáctica{" "}
+            </h2>
           </div>
 
           <Button variant="ghost" size="sm" onClick={clearAll} className="gap-2">
@@ -351,22 +369,19 @@ export default function PublicoInline() {
           </Button>
         </div>
 
-        <div className="mt-2 text-sm text-muted-foreground">
-          Escribe para filtrar (mín. {MIN_CHARS} letras).
-        </div>
+        <Separator className="my-2" />
 
-        <Separator className="my-5" />
-
-        <div className="grid lg:grid-cols-2 gap-4">
-          {/* IZQUIERDA: filtros */}
-          <div className="rounded-md border p-4 space-y-3">
+        {/* ✅ AJUSTE: 1/3 filtros, 2/3 resultados (desde lg) */}
+        <div className="grid gap-4 lg:grid-cols-12">
+          {/* IZQUIERDA: filtros (1/3) */}
+          <div className="rounded-md border p-4 space-y-3 lg:col-span-4">
             <div className="space-y-1">
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <UserRound className="h-4 w-4" />
                 Docente
               </div>
               <Input
-                placeholder="Ej. Vidal Salazar"
+                placeholder="Ej. Romina Salazar"
                 value={profesor}
                 onChange={(e) => setProfesor(e.target.value)}
               />
@@ -403,12 +418,14 @@ export default function PublicoInline() {
             </div>
           </div>
 
-          {/* DERECHA: listado con scroll */}
-          <div className="rounded-md border p-4">
+          {/* DERECHA: listado con scroll (2/3) */}
+          <div className="rounded-md border p-4 lg:col-span-8">
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
                 Planeaciones{" "}
-                <span className="text-foreground font-medium">{items.length}</span>
+                <span className="text-foreground font-medium">
+                  {items.length}
+                </span>
               </div>
 
               {selected ? (
@@ -416,9 +433,18 @@ export default function PublicoInline() {
                   Seleccionada
                 </Badge>
               ) : (
-                <Badge variant="secondary" className="text-xs">
-                  Selecciona una
+                <Badge
+                  variant="secondary"
+                  className="text-xs"
+                  style={{
+                    backgroundColor: "rgba(122,0,60,0.10)",
+                    color: "#7A003C",
+                    border: "1px solid rgba(122,0,60,0.25)",
+                  }}
+                >
+                  Selecciona una planeación didáctica
                 </Badge>
+
               )}
             </div>
 
@@ -427,7 +453,8 @@ export default function PublicoInline() {
             <div className="max-h-[420px] overflow-auto pr-1 space-y-2">
               {!p && !u ? (
                 <div className="text-sm text-muted-foreground">
-                  Escribe un docente o una unidad de aprendizaje para ver resultados.
+                  Escribe un docente o una unidad de aprendizaje para ver
+                  resultados.
                 </div>
               ) : !canSearch ? (
                 <div className="text-sm text-muted-foreground">
@@ -437,7 +464,8 @@ export default function PublicoInline() {
                 <div className="text-sm text-muted-foreground">Sin resultados.</div>
               ) : (
                 items.map((it) => {
-                  const ua = it.unidad_academica_abreviatura || it.unidad_academica;
+                  const ua =
+                    it.unidad_academica_abreviatura || it.unidad_academica;
                   const active = selected?.slug === it.slug;
 
                   return (
@@ -449,19 +477,40 @@ export default function PublicoInline() {
                         loadDetailBySlug(it.slug);
                       }}
                       className={[
-                        "w-full text-left rounded-md border p-3 hover:bg-muted/50 transition",
-                        active ? "bg-muted/60 border-foreground/20" : "",
+                        "w-full text-left rounded-md border p-3 transition",
+                        "hover:bg-muted/50",
+                        active ? "ring-1" : "",
                       ].join(" ")}
+                      style={
+                        active
+                          ? {
+                              borderColor: "rgba(122,0,60,0.35)",
+                              backgroundColor: "rgba(122,0,60,0.08)",
+                              boxShadow:
+                                "0 0 0 1px rgba(122,0,60,0.18) inset",
+                            }
+                          : undefined
+                      }
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="font-semibold truncate">{it.nombre_planeacion}</div>
+                          <div
+                            className="font-semibold truncate"
+                            style={active ? { color: "#7A003C" } : undefined}
+                          >
+                            {it.nombre_planeacion}
+                          </div>
+
                           <div className="text-sm text-muted-foreground truncate">
                             {it.profesor} · {ua}
                           </div>
                           <div className="mt-1 text-sm truncate">
-                            <span className="text-muted-foreground">Asignatura: </span>
-                            <span className="font-medium">{it.unidad_aprendizaje}</span>
+                            <span className="text-muted-foreground">
+                              Unidad de aprendizaje:{" "}
+                            </span>
+                            <span className="font-medium">
+                              {it.unidad_aprendizaje}
+                            </span>
                           </div>
                         </div>
 
@@ -495,13 +544,17 @@ export default function PublicoInline() {
               </div>
 
               <div className="mt-1 text-sm text-muted-foreground">
-                <span className="text-foreground font-medium">{selected.profesor}</span>
+                <span className="text-foreground font-medium">
+                  {selected.profesor}
+                </span>
                 <span className="mx-2">·</span>
                 <span>{uaSel}</span>
               </div>
 
               <div className="mt-2 text-sm">
-                <span className="text-muted-foreground">Unidad de aprendizaje: </span>
+                <span className="text-muted-foreground">
+                  Unidad de aprendizaje:{" "}
+                </span>
                 <span className="font-medium">{unidadNombre}</span>
               </div>
 
@@ -529,27 +582,45 @@ export default function PublicoInline() {
               {/* ========= DATOS GENERALES ========= */}
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Badge variant="secondary">Datos generales</Badge>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="rounded-xl border p-2"
+                        style={{
+                          borderColor: "rgba(122,0,60,0.20)",
+                          background: "rgba(122,0,60,0.08)",
+                        }}
+                      >
+                        <FileText className="h-4 w-4" style={{ color: "#7A003C" }} />
+                      </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <Chip>
-                      <Building2 className="h-3.5 w-3.5 mr-1" />
-                      {safeStr(detail.academia)}
-                    </Chip>
-                    <Chip>
-                      <GraduationCap className="h-3.5 w-3.5 mr-1" />
-                      {safeStr(detail.programa_academico)}
-                    </Chip>
-                    <Chip>
-                      <Layers className="h-3.5 w-3.5 mr-1" />
-                      {safeStr(detail.modalidad)}
-                    </Chip>
-                    <Chip>
-                      <Users className="h-3.5 w-3.5 mr-1" />
-                      {safeStr(detail.grupos)}
-                    </Chip>
-                  </div>
+                      <div>
+                        <div className="font-semibold leading-none">Datos generales</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Identificación académica, créditos, horas y sesiones
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Chip>
+                        <Building2 className="h-3.5 w-3.5 mr-1" />
+                        {safeStr(detail.academia)}
+                      </Chip>
+                      <Chip>
+                        <GraduationCap className="h-3.5 w-3.5 mr-1" />
+                        {safeStr(detail.programa_academico)}
+                      </Chip>
+                      <Chip>
+                        <Layers className="h-3.5 w-3.5 mr-1" />
+                        {safeStr(detail.modalidad)}
+                      </Chip>
+                      <Chip>
+                        <Users className="h-3.5 w-3.5 mr-1" />
+                        {safeStr(detail.grupos)}
+                      </Chip>
+                    </div>
                 </div>
+
 
                 <div className="mt-3 grid md:grid-cols-3 gap-2">
                   <DenseKV
@@ -591,12 +662,16 @@ export default function PublicoInline() {
                   />
                   <DenseKV
                     label="Horas aula / lab"
-                    value={`${safeStr(detail.horas_aula)} / ${safeStr(detail.horas_laboratorio)}`}
+                    value={`${safeStr(detail.horas_aula)} / ${safeStr(
+                      detail.horas_laboratorio
+                    )}`}
                     icon={<Clock3 className="h-3.5 w-3.5" />}
                   />
                   <DenseKV
                     label="Horas teoría / práctica"
-                    value={`${safeStr(detail.horas_teoria)} / ${safeStr(detail.horas_practica)}`}
+                    value={`${safeStr(detail.horas_teoria)} / ${safeStr(
+                      detail.horas_practica
+                    )}`}
                     icon={<Clock3 className="h-3.5 w-3.5" />}
                   />
                 </div>
@@ -608,9 +683,22 @@ export default function PublicoInline() {
                   <div className="font-semibold">Plagio</div>
                   <Separator className="my-3" />
                   <div className="grid sm:grid-cols-3 gap-2">
-                    <DenseKV label="Turnitin" value={fmtBool(detail.plagio_turnitin)} />
-                    <DenseKV label="iThenticate" value={fmtBool(detail.plagio_ithenticate)} />
-                    <DenseKV label="Otro" value={<span className="whitespace-pre-wrap">{safeStr(detail.plagio_otro)}</span>} />
+                    <DenseKV
+                      label="Turnitin"
+                      value={fmtBool(detail.plagio_turnitin)}
+                    />
+                    <DenseKV
+                      label="iThenticate"
+                      value={fmtBool(detail.plagio_ithenticate)}
+                    />
+                    <DenseKV
+                      label="Otro"
+                      value={
+                        <span className="whitespace-pre-wrap">
+                          {safeStr(detail.plagio_otro)}
+                        </span>
+                      }
+                    />
                   </div>
                 </div>
 
@@ -618,20 +706,20 @@ export default function PublicoInline() {
                   <div className="font-semibold">Referencias</div>
                   <Separator className="my-3" />
                   {detail.referencias?.length ? (
-                    <div className="space-y-3">
-                      {detail.referencias.map((r) => (
-                        <div key={r.id} className="rounded-md border p-3">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">{r.tipo}</Badge>
-                            <span className="text-xs text-muted-foreground">id: {r.id}</span>
+                      <div className="max-h-[320px] overflow-auto pr-1 space-y-3">
+                        {detail.referencias.map((r) => (
+                          <div key={r.id} className="rounded-md border p-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">{r.tipo}</Badge>
+                            </div>
+                            <div className="mt-2 text-xs whitespace-pre-wrap">{r.cita_apa}</div>
                           </div>
-                          <div className="mt-2 text-sm whitespace-pre-wrap">{r.cita_apa}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">—</div>
-                  )}
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">—</div>
+                    )}
+
                 </div>
               </div>
 
