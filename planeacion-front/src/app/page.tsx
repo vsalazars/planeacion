@@ -630,7 +630,7 @@ export default function Home() {
         </div>
       </section>
 
-      <SectionDivider label="Concreción" />
+      <SectionDivider label="Cómo se concreta" />
 
       <section id="como-se-concreta">
         <div className="mx-auto max-w-7xl px-4 py-14 space-y-8">
