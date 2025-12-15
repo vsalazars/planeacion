@@ -97,13 +97,29 @@ function SectionDivider({ label }: { label?: string }) {
           />
 
           <div className="flex items-center gap-3">
-            <span
+            {/* ✅ Punto con “latido” */}
+            <motion.span
               className="h-2.5 w-2.5 rounded-full"
               style={{
                 backgroundColor: IPN_GUINDA,
                 boxShadow: "0 0 0 6px rgba(122,0,60,0.10)",
               }}
+              animate={{
+                scale: [1, 1.35, 1],
+                boxShadow: [
+                  "0 0 0 6px rgba(122,0,60,0.10)",
+                  "0 0 0 10px rgba(122,0,60,0.14)",
+                  "0 0 0 6px rgba(122,0,60,0.10)",
+                ],
+              }}
+              transition={{
+                duration: 1.2,
+                ease: "easeInOut",
+                repeat: Infinity,
+                repeatDelay: 0.25,
+              }}
             />
+
             {label ? (
               <Badge
                 className="rounded-full"
@@ -205,7 +221,9 @@ function MetricsReal() {
         setLoading(true);
         setErrMsg(null);
 
-        const res = await fetch(`${API_BASE}/public/stats`, { cache: "no-store" });
+        const res = await fetch(`${API_BASE}/public/stats`, {
+          cache: "no-store",
+        });
 
         if (!res.ok) {
           const t = await res.text().catch(() => "");
@@ -302,7 +320,11 @@ function MetricsReal() {
           <MetricCard
             label="Última actualización"
             value={
-              loading ? "Cargando…" : lastUpdate ? fmtRelative(lastUpdate) : "Sin datos"
+              loading
+                ? "Cargando…"
+                : lastUpdate
+                ? fmtRelative(lastUpdate)
+                : "Sin datos"
             }
             icon={Clock}
             hint={lastUpdate ? fmtDateTimeMX(lastUpdate) : "—"}
@@ -310,7 +332,11 @@ function MetricsReal() {
           <MetricCard
             label="Última publicación"
             value={
-              loading ? "Cargando…" : lastPublish ? fmtRelative(lastPublish) : "Sin publicaciones"
+              loading
+                ? "Cargando…"
+                : lastPublish
+                ? fmtRelative(lastPublish)
+                : "Sin publicaciones"
             }
             icon={CheckCircle2}
             hint={lastPublish ? fmtDateTimeMX(lastPublish) : "—"}
@@ -330,30 +356,46 @@ export default function Home() {
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Instituto Politécnico Nacional" className="h-14 w-auto" />
+            <img
+              src="/logo.png"
+              alt="Instituto Politécnico Nacional"
+              className="h-14 w-auto"
+            />
             <div className="leading-tight">
-              <div className="font-semibold text-sm sm:text-base" style={{ color: IPN_GUINDA }}>
+              <div
+                className="font-semibold text-sm sm:text-base"
+                style={{ color: IPN_GUINDA }}
+              >
                 Instituto Politécnico Nacional
               </div>
               <div className="text-xs text-muted-foreground">
-                Nivel Superior · Planeación Didáctica
+                Dirección de Educación Superior
               </div>
             </div>
           </div>
 
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#fundamento" className="hover:text-foreground">Fundamento</a>
-            <a href="#estructura" className="hover:text-foreground">Estructura</a>
-            <a href="#como-se-concreta" className="hover:text-foreground">Cómo se concreta</a>
-            <a href="#busqueda-publica" className="hover:text-foreground">Ver planeaciones</a>
-            <a href="#faq" className="hover:text-foreground">FAQ</a>
+            <a href="#fundamento" className="hover:text-foreground">
+              Fundamento
+            </a>
+            <a href="#estructura" className="hover:text-foreground">
+              Estructura
+            </a>
+            <a href="#como-se-concreta" className="hover:text-foreground">
+              Cómo se concreta
+            </a>
+            <a href="#busqueda-publica" className="hover:text-foreground">
+              Ver planeaciones
+            </a>
+            <a href="#faq" className="hover:text-foreground">
+              FAQ
+            </a>
           </nav>
         </div>
       </header>
 
-      {/* ================= HERO (se queda con border-b) ================= */}
+      {/* ================= HERO ================= */}
       <section className="relative overflow-hidden">
-
         <div
           aria-hidden
           className="absolute inset-0"
@@ -384,13 +426,20 @@ export default function Home() {
               </p>
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                <AuthPanel buttonLabel="Iniciar sesión" buttonSize="lg" buttonClassName="px-6" />
+                <AuthPanel
+                  buttonLabel="Iniciar sesión"
+                  buttonSize="lg"
+                  buttonClassName="px-6"
+                />
+
                 <Button
                   variant="outline"
                   size="lg"
                   className="px-6"
                   onClick={() =>
-                    document.getElementById("busqueda-publica")?.scrollIntoView({ behavior: "smooth" })
+                    document
+                      .getElementById("busqueda-publica")
+                      ?.scrollIntoView({ behavior: "smooth" })
                   }
                 >
                   Buscar planeaciones
@@ -399,7 +448,10 @@ export default function Home() {
 
               <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
-                  <CheckCircle2 className="h-3.5 w-3.5" style={{ color: IPN_GUINDA }} />
+                  <CheckCircle2
+                    className="h-3.5 w-3.5"
+                    style={{ color: IPN_GUINDA }}
+                  />
                   Búsqueda pública: solo planeaciones finalizadas
                 </span>
                 <span className="hidden sm:inline">•</span>
@@ -423,10 +475,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ✨ Divisor (sin borde extra arriba/abajo) */}
       <SectionDivider label="Marco institucional" />
 
-      {/* ================= FUNDAMENTO (SIN border-b) ================= */}
+      {/* ================= FUNDAMENTO ================= */}
       <section id="fundamento">
         <div className="mx-auto max-w-7xl px-4 py-14 space-y-8">
           <Reveal>
@@ -451,7 +502,6 @@ export default function Home() {
             </div>
           </Reveal>
 
-          {/* ✅ Tarjetas mismo alto */}
           <div className="grid md:grid-cols-3 gap-4 items-stretch">
             <Reveal delay={0.02}>
               <Card className="p-6 h-full">
@@ -469,7 +519,10 @@ export default function Home() {
             <Reveal delay={0.06}>
               <Card className="p-6 h-full">
                 <div className="flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" style={{ color: IPN_GUINDA }} />
+                  <ClipboardList
+                    className="h-4 w-4"
+                    style={{ color: IPN_GUINDA }}
+                  />
                   <div className="font-semibold">Metodología</div>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -484,7 +537,10 @@ export default function Home() {
             <Reveal delay={0.1}>
               <Card className="p-6 h-full">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" style={{ color: IPN_GUINDA }} />
+                  <CheckCircle2
+                    className="h-4 w-4"
+                    style={{ color: IPN_GUINDA }}
+                  />
                   <div className="font-semibold">Evaluación</div>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -499,7 +555,6 @@ export default function Home() {
 
       <SectionDivider label="Estructura" />
 
-      {/* ================= ESTRUCTURA (SIN border-b) ================= */}
       <section id="estructura" className="bg-muted/20">
         <div className="mx-auto max-w-7xl px-4 py-14 space-y-10">
           <Reveal>
@@ -564,7 +619,9 @@ export default function Home() {
                       <Icon className="h-4 w-4" style={{ color: IPN_GUINDA }} />
                       <div className="font-semibold">{s.title}</div>
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{s.desc}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {s.desc}
+                    </p>
                   </Card>
                 </Reveal>
               );
@@ -575,7 +632,6 @@ export default function Home() {
 
       <SectionDivider label="Concreción" />
 
-      {/* ================= CÓMO SE CONCRETA (SIN border-b) ================= */}
       <section id="como-se-concreta">
         <div className="mx-auto max-w-7xl px-4 py-14 space-y-8">
           <Reveal>
@@ -626,7 +682,10 @@ export default function Home() {
                 ].map((s, idx) => {
                   const Icon = s.icon;
                   return (
-                    <div key={idx} className="rounded-xl border p-4 bg-background">
+                    <div
+                      key={idx}
+                      className="rounded-xl border p-4 bg-background"
+                    >
                       <div className="flex items-center gap-2">
                         <div
                           className="flex h-9 w-9 items-center justify-center rounded-lg"
@@ -644,28 +703,9 @@ export default function Home() {
                 })}
               </div>
 
-              <Separator className="my-6" />
 
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className="text-sm text-muted-foreground">
-                  Esta plataforma te ayuda a organizar planeaciones y a consultar
-                  públicamente las finalizadas.
-                </div>
-
-                <Button
-                  variant="secondary"
-                  className="w-full md:w-auto"
-                  onClick={() =>
-                    document.getElementById("busqueda-publica")?.scrollIntoView({ behavior: "smooth" })
-                  }
-                  style={{
-                    backgroundColor: "rgba(122,0,60,0.10)",
-                    color: IPN_GUINDA,
-                    border: "1px solid rgba(122,0,60,0.20)",
-                  }}
-                >
-                  Ir a búsqueda pública <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
+               
               </div>
             </Card>
           </Reveal>
@@ -674,7 +714,6 @@ export default function Home() {
 
       <SectionDivider label="Consulta" />
 
-      {/* ================= BÚSQUEDA PÚBLICA (SIN border-b) ================= */}
       <section id="busqueda-publica" className="bg-muted/20">
         <div className="mx-auto max-w-7xl px-4 py-14">
           <Reveal>
@@ -683,9 +722,7 @@ export default function Home() {
         </div>
       </section>
 
-      <SectionDivider label="FAQ" />
 
-      {/* ================= FAQ (SIN border-b) ================= */}
       <section id="faq">
         <div className="mx-auto max-w-7xl px-4 py-14 space-y-8">
           <Reveal>
