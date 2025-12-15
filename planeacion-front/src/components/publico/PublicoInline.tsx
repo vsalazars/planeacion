@@ -432,7 +432,7 @@ export default function PublicoInline() {
                 <Badge variant="outline" className="text-xs">
                   Seleccionada
                 </Badge>
-              ) : (
+              ) : !loading && items.length > 0 ? (
                 <Badge
                   variant="secondary"
                   className="text-xs"
@@ -444,8 +444,8 @@ export default function PublicoInline() {
                 >
                   Selecciona una planeación didáctica
                 </Badge>
+              ) : null}
 
-              )}
             </div>
 
             <Separator className="my-3" />

@@ -948,7 +948,7 @@ export default function PlaneacionForm({
                         variant="outline"
                         className="w-fit border-amber-500/40 text-amber-700 dark:border-amber-300/40 dark:text-amber-200"
                       >
-                        Crea nueva planeación o selecciona una.
+                        Nueva o selecciona una
                       </Badge>
                     )}
 
@@ -1019,7 +1019,7 @@ export default function PlaneacionForm({
                   >
                     {isSubmitting || isFinalizing
                       ? "Guardando…"
-                      : "Guardar avance"}
+                      : "Guardar"}
                   </Button>
 
                   <Button
