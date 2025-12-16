@@ -11,18 +11,30 @@ import (
 	"github.com/vsalazars/planeacion-back/internal/handlers"
 )
 
-// AuthMiddleware valida el token JWT en Authorization: Bearer <token>
+func getBearer(auth string) string {
+	if !strings.HasPrefix(auth, "Bearer ") {
+		return ""
+	}
+	return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
+}
+
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 1) Preferir Authorization: Bearer
+		tokenStr := getBearer(c.GetHeader("Authorization"))
 
-		auth := c.GetHeader("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
+		// 2) Si no hay header, intentar cookie auth_token
+		if tokenStr == "" {
+			if cookieTok, err := c.Cookie("auth_token"); err == nil {
+				tokenStr = strings.TrimSpace(cookieTok)
+			}
+		}
+
+		if tokenStr == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token no proporcionado"})
 			c.Abort()
 			return
 		}
-
-		tokenStr := strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
 
 		secret := os.Getenv("JWT_SECRET")
 		if strings.TrimSpace(secret) == "" {
@@ -33,7 +45,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Parsear token con tus claims
 		token, err := jwt.ParseWithClaims(
 			tokenStr,
 			&handlers.PlaneacionClaims{},
@@ -58,7 +69,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Inyectar valores en el contexto
 		c.Set("user_id", claims.UserID)
 		c.Set("email", claims.Email)
 		c.Set("role", claims.Role)
