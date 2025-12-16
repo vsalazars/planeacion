@@ -80,8 +80,8 @@ export default function PlaneacionAside({ sectionProgress }: Props) {
             </div>
 
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Se actualiza al cargar la planeación y al usar{" "}
-              <span className="font-medium">“Guardar avance”.</span>
+              Se actualiza al cargar la planeación y utilizar{" "}
+              <span className="font-medium">“Guardar”.</span>
             </p>
           </CardHeader>
 

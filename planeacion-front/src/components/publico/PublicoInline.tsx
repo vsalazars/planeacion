@@ -376,10 +376,11 @@ export default function PublicoInline() {
           {/* IZQUIERDA: filtros (1/3) */}
           <div className="rounded-md border p-4 space-y-3 lg:col-span-4">
             <div className="space-y-1">
-              <div className="text-sm text-muted-foreground flex items-center gap-2">
-                <UserRound className="h-4 w-4" />
+              <div className="text-sm flex items-center gap-2 text-[#7A003C] font-medium">
+                <UserRound className="h-4 w-4 text-[#7A003C]" />
                 Docente
               </div>
+
               <Input
                 placeholder="Ej. Romina Salazar Gómez"
                 value={profesor}
@@ -388,10 +389,11 @@ export default function PublicoInline() {
             </div>
 
             <div className="space-y-1">
-              <div className="text-sm text-muted-foreground flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
+              <div className="text-sm flex items-center gap-2 text-[#7A003C] font-medium">
+                <BookOpen className="h-4 w-4 text-[#7A003C]" />
                 Unidad de aprendizaje
               </div>
+
               <Input
                 placeholder="Ej. Administración de Sistemas Operativos"
                 value={unidad}
@@ -421,12 +423,14 @@ export default function PublicoInline() {
           {/* DERECHA: listado con scroll (2/3) */}
           <div className="rounded-md border p-4 lg:col-span-8">
             <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Planeaciones{" "}
-                <span className="text-foreground font-medium">
+              <div className="text-sm flex items-center gap-1 text-[#7A003C] font-medium">
+                <Layers className="h-4 w-4 text-[#7A003C]" />
+                Planeaciones
+                <span className="font-semibold">
                   {items.length}
                 </span>
               </div>
+
 
               {selected ? (
                 <Badge variant="outline" className="text-xs">

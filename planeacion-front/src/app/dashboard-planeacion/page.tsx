@@ -140,8 +140,12 @@ export default async function DashboardPlaneacionPage() {
                         <span>{user?.nombre_completo}</span>
                       </div>
                       <Badge
-                        variant="outline"
-                        className="w-fit text-[10px] px-2 py-0 mt-0.5"
+                        className="
+                          w-fit mt-0.5 px-2 py-0 text-[10px]
+                          border border-[#7A003C]/30
+                          bg-[#7A003C]/10 text-[#7A003C]
+                          font-medium
+                        "
                       >
                         Docente
                       </Badge>
@@ -160,13 +164,23 @@ export default async function DashboardPlaneacionPage() {
                     <form action={logoutAction}>
                       <Button
                         type="submit"
-                        variant="outline"
                         size="sm"
-                        className="w-full justify-center gap-2"
+                        className="
+                          w-full h-9
+                          rounded-full
+                          text-xs font-medium
+                          justify-center gap-2
+                          border border-[#7A003C]/20
+                          bg-transparent text-[#7A003C]
+                          hover:bg-[#7A003C]/10
+                          transition-colors
+                        "
                       >
-                        <LogOut className="h-4 w-4" />
+                        <LogOut className="h-3.5 w-3.5" />
                         Cerrar sesión
                       </Button>
+
+
                     </form>
                   </div>
                 </div>
