@@ -44,8 +44,11 @@ import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 
 // ====== ENV / URLS ======
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api").replace(/\/$/, "");
-const DASHBOARD_PATH = process.env.NEXT_PUBLIC_DASHBOARD_PATH || "/planeaciones";
+const API_BASE = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+).replace(/\/$/, "");
+const DASHBOARD_PATH =
+  process.env.NEXT_PUBLIC_DASHBOARD_PATH || "/planeaciones";
 
 const URLS = {
   unidades: `${API_BASE}/unidades`,
@@ -130,7 +133,10 @@ export default function AuthPanel({
     u.abreviatura ? `${u.nombre} (${u.abreviatura})` : u.nombre;
 
   const selectedRegUnit = useMemo(
-    () => (regSelectedUnitId ? units.find((u) => String(u.id) === regSelectedUnitId) : undefined),
+    () =>
+      regSelectedUnitId
+        ? units.find((u) => String(u.id) === regSelectedUnitId)
+        : undefined,
     [regSelectedUnitId, units]
   );
 
@@ -162,11 +168,20 @@ export default function AuthPanel({
       const res = await fetch(URLS.unidades, { cache: "no-store" });
       if (!res.ok) {
         const maybe = await safeJson(res);
-        throw new Error(maybe?.error || maybe?.msg || maybe?.detail || "No se pudo cargar el catálogo de unidades");
+        throw new Error(
+          maybe?.error ||
+            maybe?.msg ||
+            maybe?.detail ||
+            "No se pudo cargar el catálogo de unidades"
+        );
       }
 
       const payload = await res.json();
-      const items: Unidad[] = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
+      const items: Unidad[] = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.items)
+        ? payload.items
+        : [];
       setUnits(items);
     } catch (err: any) {
       setUnitsError(err?.message ?? "Error cargando unidades académicas");
@@ -198,8 +213,11 @@ export default function AuthPanel({
         const msg =
           data?.error ||
           data?.msg ||
-          (data?.detail && (Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail)) ||
-          (res.status === 401 ? "Credenciales inválidas" : `No se pudo iniciar sesión (${res.status})`);
+          (data?.detail &&
+            (Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail)) ||
+          (res.status === 401
+            ? "Credenciales inválidas"
+            : `No se pudo iniciar sesión (${res.status})`);
         throw new Error(msg);
       }
 
@@ -235,7 +253,8 @@ export default function AuthPanel({
     e.preventDefault();
     setRegError(null);
 
-    if (regEmail.trim().toLowerCase() !== regEmail2.trim().toLowerCase()) return setRegError("Los correos no coinciden");
+    if (regEmail.trim().toLowerCase() !== regEmail2.trim().toLowerCase())
+      return setRegError("Los correos no coinciden");
     if (regPass !== regPass2) return setRegError("Las contraseñas no coinciden");
     if (!regSelectedUnitId) return setRegError("Selecciona una unidad académica");
 
@@ -257,7 +276,8 @@ export default function AuthPanel({
         const msg =
           data?.error ||
           data?.msg ||
-          (data?.detail && (Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail)) ||
+          (data?.detail &&
+            (Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail)) ||
           `No se pudo crear la cuenta (${res.status})`;
         throw new Error(msg);
       }
@@ -287,7 +307,9 @@ export default function AuthPanel({
       const res = await fetch(URLS.google, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(unidadID ? { id_token: idToken, unidad_id: unidadID } : { id_token: idToken }),
+        body: JSON.stringify(
+          unidadID ? { id_token: idToken, unidad_id: unidadID } : { id_token: idToken }
+        ),
       });
 
       const data = await safeJson(res);
@@ -336,13 +358,11 @@ export default function AuthPanel({
     if (!window.google?.accounts?.id) return;
 
     const el = document.getElementById("googleBtn");
-    // aún no está el contenedor: reintenta
     if (!el) {
       if (tries < 12) setTimeout(() => renderGoogleButtonWithRetry(tries + 1), 50);
       return;
     }
 
-    // init 1 sola vez
     if (!gisInitializedRef.current) {
       window.google.accounts.id.initialize({
         client_id: clientId,
@@ -358,7 +378,6 @@ export default function AuthPanel({
       gisInitializedRef.current = true;
     }
 
-    // si ya trae iframe/child, no lo borres (pero si está vacío, sí renderiza)
     const alreadyRendered = !!el.firstChild;
     if (!alreadyRendered) {
       el.innerHTML = "";
@@ -374,7 +393,6 @@ export default function AuthPanel({
       (el.firstElementChild as HTMLElement | null)?.setAttribute("style", "width:100%;");
     }
 
-    // extra: si Google tardó y sigue vacío, otro intento
     if (!el.firstChild && tries < 12) {
       setTimeout(() => renderGoogleButtonWithRetry(tries + 1), 80);
     }
@@ -383,7 +401,6 @@ export default function AuthPanel({
   useEffect(() => {
     if (!openSheet) return;
     if (!googleReady) return;
-    // un par de frames para asegurar montaje del DOM en el Sheet
     const t1 = setTimeout(() => renderGoogleButtonWithRetry(0), 0);
     const t2 = setTimeout(() => renderGoogleButtonWithRetry(0), 80);
     return () => {
@@ -399,7 +416,6 @@ export default function AuthPanel({
         strategy="afterInteractive"
         onLoad={() => {
           setGoogleReady(true);
-          // si ya está abierto, pinta
           if (openSheet) {
             try {
               renderGoogleButtonWithRetry(0);
@@ -422,7 +438,6 @@ export default function AuthPanel({
           </Button>
         </SheetTrigger>
 
-        {/* ✅ Sombra + ring + fondo más pro, y ancho OK */}
         <SheetContent
           side="right"
           className="w-full sm:max-w-md px-0 shadow-2xl ring-1 ring-border/60 bg-gradient-to-b from-background to-background/80 backdrop-blur"
@@ -433,10 +448,9 @@ export default function AuthPanel({
               <SheetHeader className="space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <SheetTitle className="text-2xl tracking-tight">Acceso</SheetTitle>
-                     </div>
-                  <div className="shrink-0 rounded-xl border bg-background/70 px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
-                    Dirección de Educación Superior
+                    <SheetTitle className="text-2xl tracking-tight font-semibold text-[#7A003C]">
+                      Acceso a la plataforma
+                    </SheetTitle>
                   </div>
                 </div>
               </SheetHeader>
@@ -505,57 +519,29 @@ export default function AuthPanel({
                   </div>
                 )}
 
-                {/* Acciones (mismo tamaño) */}
+                {/* ===== Acciones discretas en la misma fila ===== */}
                 <div className="mx-auto w-full" style={{ maxWidth: BTN_W }}>
-                  <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    {/* Entrar (discreto) */}
                     <Button
                       type="submit"
-                      className={`w-full ${BTN_H} ${BTN_R} text-base shadow-sm`}
+                      className="flex-1 h-10 rounded-full text-sm shadow-sm"
                       disabled={loggingIn || googleBusy}
                     >
                       {loggingIn ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Iniciando...
+                          Entrando…
                         </>
                       ) : (
-                        "Entrar"
+                        <>
+                          <LogIn className="mr-2 h-4 w-4" />
+                          Entrar
+                        </>
                       )}
                     </Button>
 
-                    <div className="flex items-center gap-3">
-                      <Separator className="flex-1" />
-                      <span className="text-xs text-muted-foreground">o</span>
-                      <Separator className="flex-1" />
-                    </div>
-
-                    {/* ✅ contenedor con alto mínimo para que no “desaparezca” */}
-                    <div
-                      className={`w-full ${BTN_R} overflow-hidden ${googleBusy ? "opacity-50 pointer-events-none" : ""}`}
-                      style={{ minHeight: 48 }}
-                    >
-                      <div id="googleBtn" className="w-full flex justify-center" />
-                    </div>
-
-                    {googleBusy && (
-                      <div className="text-xs text-muted-foreground text-center">
-                        Procesando Google…
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="pt-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                    <Link
-                      href="/auth/recover"
-                      className="text-muted-foreground hover:text-foreground hover:underline inline-flex items-center"
-                    >
-                      <KeyRound className="mr-1 h-4 w-4" />
-                      Recuperar contraseña
-                    </Link>
-
+                    {/* Crear cuenta (discreto guinda) */}
                     <Dialog
                       open={openRegister}
                       onOpenChange={(v) => {
@@ -566,8 +552,17 @@ export default function AuthPanel({
                       }}
                     >
                       <DialogTrigger asChild>
-                        <Button type="button" variant="ghost" size="sm" className="rounded-full">
-                          <UserPlus className="mr-1 h-4 w-4" />
+                        <Button
+                          type="button"
+                          disabled={loggingIn || googleBusy}
+                          className="
+                            flex-1 h-10 rounded-full text-sm shadow-sm
+                            border border-[#7A003C]/30
+                            bg-[#7A003C]/10 text-[#7A003C]
+                            hover:bg-[#7A003C]/15
+                          "
+                        >
+                          <UserPlus className="mr-2 h-4 w-4" />
                           Crear cuenta
                         </Button>
                       </DialogTrigger>
@@ -751,7 +746,44 @@ export default function AuthPanel({
                     </Dialog>
                   </div>
 
-                  <p className="mt-3 text-xs text-muted-foreground">
+                  {/* Separador Google */}
+                  <div className="mt-4 flex items-center gap-3">
+                    <Separator className="flex-1" />
+                    <span className="text-xs text-muted-foreground">o</span>
+                    <Separator className="flex-1" />
+                  </div>
+
+                  {/* Google */}
+                  <div
+                    className={`mt-3 w-full ${BTN_R} overflow-hidden ${googleBusy ? "opacity-50 pointer-events-none" : ""}`}
+                    style={{ minHeight: 44 }}
+                  >
+                    <div id="googleBtn" className="w-full flex justify-center" />
+                  </div>
+
+                  {googleBusy && (
+                    <div className="mt-2 text-xs text-muted-foreground text-center">
+                      Procesando Google…
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="pt-2">
+                  {/* ===== Recuperar contraseña (PENDIENTE) ===== */}
+                  {/*
+                  <div className="flex justify-center text-sm">
+                    <Link
+                      href="/auth/recover"
+                      className="text-muted-foreground hover:text-foreground hover:underline inline-flex items-center"
+                    >
+                      <KeyRound className="mr-1 h-4 w-4" />
+                      Recuperar contraseña
+                    </Link>
+                  </div>
+                  */}
+
+                  <p className="mt-3 text-xs text-muted-foreground text-center">
                     Al continuar, se creará una sesión segura para mantener tu acceso.
                   </p>
                 </div>

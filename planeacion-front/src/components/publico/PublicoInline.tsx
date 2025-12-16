@@ -381,7 +381,7 @@ export default function PublicoInline() {
                 Docente
               </div>
               <Input
-                placeholder="Ej. Romina Salazar"
+                placeholder="Ej. Romina Salazar Gómez"
                 value={profesor}
                 onChange={(e) => setProfesor(e.target.value)}
               />

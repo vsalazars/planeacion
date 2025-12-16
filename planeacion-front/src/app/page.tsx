@@ -382,7 +382,7 @@ export default function Home() {
               Estructura
             </a>
             <a href="#como-se-concreta" className="hover:text-foreground">
-              Cómo se concreta
+              Práctica docente
             </a>
             <a href="#busqueda-publica" className="hover:text-foreground">
               Ver planeaciones
@@ -452,16 +452,15 @@ export default function Home() {
                     className="h-3.5 w-3.5"
                     style={{ color: IPN_GUINDA }}
                   />
-                  Búsqueda pública: solo planeaciones finalizadas
+                  
                 </span>
-                <span className="hidden sm:inline">•</span>
                 <a
                   className="underline underline-offset-4 hover:text-foreground"
-                  href="https://www.ipn.mx/seacademica/publicaciones.html"
+                  href="https://www.ipn.mx/assets/files/seacademica/docs/Publicaciones/MPLRXII3BCD.pdf"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Fundamento normativo de la Secretaría Académica
+                  Fundamento académico
                 </a>
               </div>
             </div>
@@ -630,7 +629,7 @@ export default function Home() {
         </div>
       </section>
 
-      <SectionDivider label="Cómo se concreta" />
+      <SectionDivider label="Práctica docente" />
 
       <section id="como-se-concreta">
         <div className="mx-auto max-w-7xl px-4 py-14 space-y-8">
@@ -644,7 +643,7 @@ export default function Home() {
               </div>
               <div>
                 <h2 className="text-2xl font-semibold">
-                  Cómo se concreta en práctica docente
+                  Cómo se concreta en la práctica docente
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-2xl">
                   Síntesis operativa coherente con el Manual XII: del diseño al
