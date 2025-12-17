@@ -2,10 +2,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import PlaneacionesDashboard from "@/components/planeacion/PlaneacionesDashboard";
 
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, University, LayoutDashboard, User2 } from "lucide-react";
+import { LogOut, University, User2 } from "lucide-react";
+
+import LogoutButton from "@/components/auth/LogoutButton";
 
 const API_BASE = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
@@ -87,11 +88,8 @@ export default async function DashboardPlaneacionPage() {
                 className="h-13 w-auto rounded-md bg-background object-contain"
               />
 
-
               <div className="flex flex-col gap-0.5">
-                
                 <div className="flex items-center gap-2">
-                  
                   <h1 className="text-base sm:text-lg font-semibold leading-tight">
                     Instituto Politécnico Nacional
                   </h1>
@@ -104,18 +102,14 @@ export default async function DashboardPlaneacionPage() {
 
             {/* Derecha: botón logout + avatar con panel desplegable */}
             <div className="flex items-center gap-3">
-              {/* Botón solo ícono para cerrar sesión */}
-              <form action={logoutAction}>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  size="icon"
-                  className="rounded-full h-9 w-9"
-                  title="Cerrar sesión"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </form>
+              {/* Botón solo ícono para cerrar sesión (CLIENT) */}
+              <LogoutButton
+                action={logoutAction}
+                title="Cerrar sesión"
+                className="rounded-full h-9 w-9 border border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center"
+              >
+                <LogOut className="h-4 w-4" />
+              </LogoutButton>
 
               {/* Avatar con panel de información del usuario */}
               <details className="relative group">
@@ -134,11 +128,13 @@ export default async function DashboardPlaneacionPage() {
                         {iniciales}
                       </AvatarFallback>
                     </Avatar>
+
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-center gap-1 text-sm font-medium">
                         <User2 className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>{user?.nombre_completo}</span>
                       </div>
+
                       <Badge
                         className="
                           w-fit mt-0.5 px-2 py-0 text-[10px]
@@ -149,6 +145,7 @@ export default async function DashboardPlaneacionPage() {
                       >
                         Docente
                       </Badge>
+
                       <div className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
                         <University className="h-3.5 w-3.5 mt-0.5 text-primary" />
                         <div className="flex flex-col">
@@ -161,27 +158,25 @@ export default async function DashboardPlaneacionPage() {
                   </div>
 
                   <div className="mt-3 pt-3 border-t">
-                    <form action={logoutAction}>
-                      <Button
-                        type="submit"
-                        size="sm"
-                        className="
-                          w-full h-9
-                          rounded-full
-                          text-xs font-medium
-                          justify-center gap-2
-                          border border-[#7A003C]/20
-                          bg-transparent text-[#7A003C]
-                          hover:bg-[#7A003C]/10
-                          transition-colors
-                        "
-                      >
-                        <LogOut className="h-3.5 w-3.5" />
-                        Cerrar sesión
-                      </Button>
-
-
-                    </form>
+                    {/* Botón “Cerrar sesión” dentro del panel (CLIENT) */}
+                    <LogoutButton
+                      action={logoutAction}
+                      title="Cerrar sesión"
+                      className="
+                        w-full h-9
+                        rounded-full
+                        text-xs font-medium
+                        justify-center gap-2
+                        border border-[#7A003C]/20
+                        bg-transparent text-[#7A003C]
+                        hover:bg-[#7A003C]/10
+                        transition-colors
+                        inline-flex items-center
+                      "
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Cerrar sesión
+                    </LogoutButton>
                   </div>
                 </div>
               </details>
@@ -190,11 +185,10 @@ export default async function DashboardPlaneacionPage() {
         </div>
       </header>
 
-      {/* Contenido: sin scroll global, solo interno en PlaneacionesDashboard */}
+      {/* Contenido */}
       <div className="flex-1 min-h-0 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-hidden overflow-x-hidden">
         <PlaneacionesDashboard token={token} />
       </div>
-
     </main>
   );
 }
