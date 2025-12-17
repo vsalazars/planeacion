@@ -409,6 +409,11 @@ export default function AuthPanel({
     };
   }, [openSheet, googleReady]);
 
+  useEffect(() => {
+  if (window.google?.accounts?.id) setGoogleReady(true);
+}, []);
+
+
   return (
     <>
       <Script

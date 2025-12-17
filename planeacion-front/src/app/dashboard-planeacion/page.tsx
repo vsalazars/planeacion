@@ -12,13 +12,23 @@ const API_BASE = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
 ).replace(/\/$/, "");
 
-// Server Action logout
+// Server Action logout (SIN redirect)
 export async function logoutAction() {
   "use server";
   const store = await cookies();
+
+  // borrar normal
   store.delete("auth_token");
-  redirect("/");
+
+  // borrar forzando path /
+  store.set({
+    name: "auth_token",
+    value: "",
+    path: "/",
+    expires: new Date(0),
+  });
 }
+
 
 export default async function DashboardPlaneacionPage() {
   // --- protección por cookie ---

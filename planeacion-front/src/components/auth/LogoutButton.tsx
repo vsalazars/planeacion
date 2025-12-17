@@ -35,10 +35,12 @@ export default function LogoutButton({
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          await action();        // server action: borra cookie + redirect
-          router.refresh();      // fuerza revalidación del árbol/cookies en cliente
+            await action();                 // borra cookie
+            window.location.assign("/");    // ✅ recarga real (no SPA)
         })
-      }
+        }
+
+
     >
       {children ?? <LogOut className="h-4 w-4" />}
     </Button>
