@@ -137,23 +137,12 @@ type UnidadTematicaPayload struct {
 // =============================
 
 func getClaimsFromHeader(c *gin.Context) (*PlaneacionClaims, error) {
-	// 1) Preferir Authorization: Bearer
 	authHeader := c.GetHeader("Authorization")
-	tokenStr := ""
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		tokenStr = strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
-	}
-
-	// 2) Si no hay header, intentar cookie auth_token
-	if tokenStr == "" {
-		if cookieTok, err := c.Cookie("auth_token"); err == nil {
-			tokenStr = strings.TrimSpace(cookieTok)
-		}
-	}
-
-	if tokenStr == "" {
+	if !strings.HasPrefix(authHeader, "Bearer ") {
 		return nil, errors.New("token no proporcionado")
 	}
+
+	tokenStr := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 
 	secret, err := getJWTSecret()
 	if err != nil {
@@ -177,7 +166,6 @@ func getClaimsFromHeader(c *gin.Context) (*PlaneacionClaims, error) {
 
 	return claims, nil
 }
-
 
 // =============================
 // Slug helpers (para URL pública)
