@@ -27,7 +27,11 @@ export async function POST(request: Request) {
   }
 
   const tokenFromBody =
-    typeof body?.token === "string" ? body.token.trim() : "";
+    (typeof body?.token === "string" && body.token.trim()) ||
+    (typeof body?.credential === "string" && body.credential.trim()) ||
+    (typeof body?.id_token === "string" && body.id_token.trim()) ||
+    (typeof body?.access_token === "string" && body.access_token.trim()) ||
+    "";
 
   const tokenFromHeader = pickTokenFromAuthHeader(
     request.headers.get("authorization")
