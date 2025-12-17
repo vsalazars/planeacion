@@ -497,17 +497,32 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 // Handler: ME (usuario actual)
 // =============================
 
+// =============================
+// Handler: ME (usuario actual)
+// =============================
+
 // GET /api/me
 func (h *AuthHandler) Me(c *gin.Context) {
+	// 1) Intentar Bearer token
+	tokenStr := ""
 	authHeader := c.GetHeader("Authorization")
-	if !strings.HasPrefix(authHeader, "Bearer ") {
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		tokenStr = strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	}
+
+	// 2) Si no hay Bearer, intentar cookie auth_token (set por Next /api/session)
+	if tokenStr == "" {
+		if ck, err := c.Cookie("auth_token"); err == nil {
+			tokenStr = strings.TrimSpace(ck)
+		}
+	}
+
+	if tokenStr == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "token no proporcionado",
 		})
 		return
 	}
-
-	tokenStr := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 
 	secret, err := getJWTSecret()
 	if err != nil {
